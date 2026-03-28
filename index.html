@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Femorea Profit Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f13; color: #e8e8f0; min-height: 100vh; }
+    header { background: #18181f; border-bottom: 1px solid #2a2a3a; padding: 18px 28px; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 24px; background: #18181f; padding: 6px; border-radius: 10px; width: fit-content; }
+    .tab { padding: 8px 20px; border-radius: 7px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; background: transparent; color: #888; transition: all 0.2s; }
+    .tab.active { background: #6c5ce7; color: #fff; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .card { background: #18181f; border: 1px solid #2a2a3a; border-radius: 12px; padding: 18px; }
+    .card .label { font-size: 0.72rem; color: #888; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card .value { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .card .value.green { color: #00b894; }
+    .card .value.red { color: #e17055; }
+    .card .value.yellow { color: #fdcb6e; }
+    .card .sub { font-size: 0.72rem; color: #666; margin-top: 4px; }
+    .panel { background: #18181f; border: 1px solid #2a2a3a; border-radius: 12px; padding: 22px; margin-bottom: 18px; }
+    .panel h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 16px; color: #ccc; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 0.78rem; color: #888; font-weight: 500; }
+    .form-group input, .form-group select { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 9px 12px; color: #fff; font-size: 0.88rem; outline: none; transition: border 0.2s; }
+    .form-group input:focus, .form-group select:focus { border-color: #6c5ce7; }
+    .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .btn-primary { background: #6c5ce7; color: #fff; }
+    .btn-primary:hover { background: #5a4bd1; }
+    .btn-success { background: #00b894; color: #fff; }
+    .btn-success:hover { background: #00a381; }
+    .btn-danger { background: #e17055; color: #fff; }
+    .btn-sm { padding: 6px 14px; font-size: 0.78rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 0.72rem; color: #888; text-align: left; padding: 9px 12px; border-bottom: 1px solid #2a2a3a; text-transform: uppercase; letter-spacing: 0.4px; }
+    td { padding: 11px 12px; border-bottom: 1px solid #1a1a24; font-size: 0.83rem; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+    .badge-de { background: #3498db22; color: #74b9ff; }
+    .badge-at { background: #e1705522; color: #e17055; }
+    .badge-ch { background: #fdcb6e22; color: #fdcb6e; }
+    .badge-other { background: #a29bfe22; color: #a29bfe; }
+    .date-range { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+    .date-range input { background: #18181f; border: 1px solid #2a2a3a; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 0.85rem; outline: none; }
+    .api-status { display: flex; gap: 6px; align-items: center; font-size: 0.78rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #00b894; }
+    .dot-red { background: #e17055; }
+    .dot-yellow { background: #fdcb6e; }
+    .status-bar { display: flex; gap: 18px; flex-wrap: wrap; }
+    .divider { width: 1px; background: #2a2a3a; }
+    .product-row { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr 1fr auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid #1a1a24; }
+    .product-row:last-child { border-bottom: none; }
+    .product-row input, .product-row select { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 7px; padding: 7px 9px; color: #fff; font-size: 0.82rem; outline: none; width: 100%; }
+    .product-header { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr 1fr auto; gap: 8px; padding: 4px 0 10px; }
+    .product-header span { font-size: 0.7rem; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+    .loading { display: inline-block; width: 13px; height: 13px; border: 2px solid #444; border-top-color: #6c5ce7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 36px; color: #555; font-size: 0.88rem; }
+    .meta-daily { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .meta-daily .form-group { flex: 1; min-width: 150px; }
+    .profit-bar { height: 5px; background: #2a2a3a; border-radius: 3px; margin-top: 7px; overflow: hidden; }
+    .profit-bar-fill { height: 100%; background: linear-gradient(90deg, #6c5ce7, #00b894); border-radius: 3px; transition: width 0.5s; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a1a24; font-size: 0.84rem; }
+    .summary-row:last-child { border-bottom: none; font-weight: 700; font-size: 0.95rem; }
+    .country-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .country-card { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 10px; padding: 16px; }
+    .country-card h4 { font-size: 0.8rem; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .country-card .row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 4px 0; color: #aaa; }
+    .country-card .row span:last-child { color: #fff; font-weight: 600; }
+    .flag { font-size: 1.1rem; margin-right: 6px; }
+    .pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 700px) { .pnl-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚀 Femorea Profit Tracker</h1>
+  <div class="status-bar" style="font-size:0.78rem;">
+    <div class="api-status"><div class="dot dot-yellow" id="dot-shopify"></div> Shopify</div>
+    <div class="divider"></div>
+    <div class="api-status"><div class="dot dot-yellow" id="dot-tiktok"></div> TikTok</div>
+    <div class="divider"></div>
+    <div class="api-status"><div class="dot dot-yellow" id="dot-meta"></div> Meta (manuell)</div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('dashboard',this)">📊 Dashboard</button>
+    <button class="tab" onclick="showTab('meta',this)">📝 Meta Kosten</button>
+    <button class="tab" onclick="showTab('produkte',this)">📦 Produkte & Kosten</button>
+    <button class="tab" onclick="showTab('einstellungen',this)">⚙️ Einstellungen</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="section active" id="tab-dashboard">
+    <div class="date-range">
+      <input type="date" id="date-from" />
+      <span style="color:#666">bis</span>
+      <input type="date" id="date-to" />
+      <button class="btn btn-primary" onclick="loadDashboard()">Laden <span id="loading-spinner" style="display:none" class="loading"></span></button>
+      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setToday()">Heute</button>
+      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setYesterday()">Gestern</button>
+      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setLast7()">7 Tage</button>
+      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setThisMonth()">Dieser Monat</button>
+    </div>
+
+    <!-- GESAMT KARTEN -->
+    <div class="cards">
+      <div class="card"><div class="label">Umsatz Gesamt</div><div class="value" id="c-revenue">–</div><div class="sub" id="c-orders-count">– Bestellungen</div></div>
+      <div class="card"><div class="label">Produktkosten</div><div class="value red" id="c-cogs">–</div><div class="sub">Supplier Endpreise</div></div>
+      <div class="card"><div class="label">Werbekosten</div><div class="value red" id="c-adspend">–</div><div class="sub"><span id="c-tiktok-sub">TikTok: –</span> | <span id="c-meta-sub">Meta: –</span></div></div>
+      <div class="card"><div class="label">Shopify & Stripe</div><div class="value red" id="c-fees">–</div><div class="sub">Transaktionsgebühren</div></div>
+      <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub">DE 19% | AT 20% | CH 8.1%</div></div>
+      <div class="card"><div class="label">Netto-Profit</div><div class="value green" id="c-profit">–</div>
+        <div class="profit-bar"><div class="profit-bar-fill" id="profit-bar" style="width:0%"></div></div>
+        <div class="sub" id="c-margin">Marge: – | ROAS: –</div>
+      </div>
+    </div>
+
+    <!-- AUFSCHLÜSSELUNG NACH LAND -->
+    <div class="panel">
+      <h3>🌍 Aufschlüsselung nach Land</h3>
+      <div class="country-breakdown" id="country-breakdown">
+        <div class="empty-state" style="grid-column:1/-1">Daten laden um Länder-Aufschlüsselung zu sehen</div>
+      </div>
+    </div>
+
+    <!-- P&L + WERBEKOSTEN NEBENEINANDER -->
+    <div class="pnl-grid">
+      <div class="panel">
+        <h3>Gewinn & Verlust</h3>
+        <div id="pnl-table"><div class="empty-state">Zeitraum auswählen und "Laden" klicken</div></div>
+      </div>
+      <div class="panel">
+        <h3>📣 Werbekosten Aufschlüsselung</h3>
+        <div id="ads-breakdown"><div class="empty-state">Keine Daten</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Bestellungen</h3>
+      <div id="orders-table"><div class="empty-state">Keine Daten geladen</div></div>
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="section" id="tab-meta">
+    <div class="panel">
+      <h3>Meta Werbekosten – tägliche Eingabe</h3>
+      <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine Meta/Facebook Ausgaben ein. Werden automatisch im Dashboard addiert.</p>
+      <div class="meta-daily">
+        <div class="form-group"><label>Datum</label><input type="date" id="meta-date" /></div>
+        <div class="form-group"><label>Werbekosten (€)</label><input type="number" id="meta-amount" placeholder="z.B. 47.50" step="0.01" min="0" /></div>
+        <div class="form-group"><label>Notiz (optional)</label><input type="text" id="meta-note" placeholder="z.B. Kampagne XY" /></div>
+        <button class="btn btn-success" style="margin-bottom:1px" onclick="saveMetaCost()">Speichern</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Eingetragene Meta Kosten</h3>
+      <div id="meta-history"><div class="empty-state">Noch keine Einträge</div></div>
+    </div>
+  </div>
+
+  <!-- PRODUKTE -->
+  <div class="section" id="tab-produkte">
+    <div class="panel">
+      <h3>Produktkosten nach Land & Menge</h3>
+      <p style="font-size:0.82rem;color:#666;margin-bottom:16px;">Supplier Endpreis inkl. Versand – separat für 🇩🇪 DE, 🇦🇹 AT, 🇨🇭 CH und Sonstige.</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="addProductRow('DE')">+ 🇩🇪 DE</button>
+        <button class="btn btn-primary btn-sm" onclick="addProductRow('AT')">+ 🇦🇹 AT</button>
+        <button class="btn btn-primary btn-sm" onclick="addProductRow('CH')">+ 🇨🇭 CH</button>
+        <button class="btn btn-primary btn-sm" onclick="addProductRow('OTHER')">+ 🌍 Sonstige</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <div class="product-header">
+          <span>Produktname / Variante</span><span>Land</span><span>Menge</span><span>Supplier Preis (€)</span><span>Shopify Variant ID</span><span></span>
+        </div>
+        <div id="product-rows"></div>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="btn btn-success" onclick="saveProducts()">💾 Alle Produktkosten speichern</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Gespeicherte Produktkosten</h3>
+      <div id="saved-products-table"><div class="empty-state">Noch keine Produkte konfiguriert</div></div>
+    </div>
+  </div>
+
+  <!-- EINSTELLUNGEN -->
+  <div class="section" id="tab-einstellungen">
+    <div class="panel">
+      <h3>Shopify API</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Shop Domain</label><input type="text" id="cfg-shopify-domain" placeholder="femorea.myshopify.com" /></div>
+        <div class="form-group"><label>Access Token</label><input type="password" id="cfg-shopify-token" placeholder="shpat_..." /></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>TikTok Ads API</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>Access Token</label><input type="password" id="cfg-tiktok-token" placeholder="TikTok Access Token" /></div>
+        <div class="form-group"><label>Advertiser ID</label><input type="text" id="cfg-tiktok-advertiser" placeholder="7xxxxxxxxxxxxxxxxx" /></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Steuersätze & Gebühren</h3>
+      <div class="form-grid">
+        <div class="form-group"><label>🇩🇪 USt Deutschland (%)</label><input type="number" id="cfg-ust-de" value="19" /></div>
+        <div class="form-group"><label>🇦🇹 USt Österreich (%)</label><input type="number" id="cfg-ust-at" value="20" /></div>
+        <div class="form-group"><label>🇨🇭 USt Schweiz (%)</label><input type="number" id="cfg-ust-ch" value="8.1" /></div>
+        <div class="form-group"><label>Shopify Transaktionsgebühr (%)</label><input type="number" id="cfg-shopify-fee" value="2" step="0.1" /></div>
+        <div class="form-group"><label>Stripe/Zahlungsgebühr (%)</label><input type="number" id="cfg-stripe-fee" value="1.5" step="0.1" /></div>
+      </div>
+    </div>
+    <button class="btn btn-success" onclick="saveConfig()">💾 Einstellungen speichern</button>
+    <span id="save-msg" style="font-size:0.82rem;color:#00b894;margin-left:12px;display:none;">✓ Gespeichert!</span>
+  </div>
+</div>
+
+<script>
+let config = {}, products = [], metaCosts = {};
+
+function loadState() {
+  try { config = JSON.parse(localStorage.getItem('femorea_config') || '{}'); } catch(e) {}
+  try { products = JSON.parse(localStorage.getItem('femorea_products') || '[]'); } catch(e) {}
+  try { metaCosts = JSON.parse(localStorage.getItem('femorea_meta') || '{}'); } catch(e) {}
+  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-ust-de','cfg-ust-at','cfg-ust-ch','cfg-shopify-fee','cfg-stripe-fee'].forEach(id => {
+    if (config[id] !== undefined) document.getElementById(id).value = config[id];
+  });
+  renderSavedProducts(); renderMetaHistory(); updateApiStatus();
+}
+
+function saveConfig() {
+  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-ust-de','cfg-ust-at','cfg-ust-ch','cfg-shopify-fee','cfg-stripe-fee'].forEach(id => {
+    config[id] = document.getElementById(id).value;
+  });
+  localStorage.setItem('femorea_config', JSON.stringify(config));
+  const msg = document.getElementById('save-msg');
+  msg.style.display = 'inline'; setTimeout(() => msg.style.display = 'none', 2000);
+  updateApiStatus();
+}
+
+function updateApiStatus() {
+  document.getElementById('dot-shopify').className = 'dot ' + (config['cfg-shopify-token'] ? 'dot-green' : 'dot-red');
+  document.getElementById('dot-tiktok').className = 'dot ' + (config['cfg-tiktok-token'] ? 'dot-green' : 'dot-red');
+  document.getElementById('dot-meta').className = 'dot dot-yellow';
+}
+
+function showTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function fmt(d) { return d.toISOString().split('T')[0]; }
+function setToday() { const d = fmt(new Date()); document.getElementById('date-from').value = d; document.getElementById('date-to').value = d; }
+function setYesterday() { const d = new Date(); d.setDate(d.getDate()-1); const s = fmt(d); document.getElementById('date-from').value = s; document.getElementById('date-to').value = s; }
+function setLast7() { const t = new Date(), f = new Date(); f.setDate(f.getDate()-6); document.getElementById('date-from').value = fmt(f); document.getElementById('date-to').value = fmt(t); }
+function setThisMonth() { const d = new Date(); document.getElementById('date-from').value = fmt(new Date(d.getFullYear(), d.getMonth(), 1)); document.getElementById('date-to').value = fmt(d); }
+
+function saveMetaCost() {
+  const date = document.getElementById('meta-date').value;
+  const amount = parseFloat(document.getElementById('meta-amount').value);
+  const note = document.getElementById('meta-note').value;
+  if (!date || isNaN(amount)) { alert('Bitte Datum und Betrag eingeben.'); return; }
+  metaCosts[date] = { amount, note };
+  localStorage.setItem('femorea_meta', JSON.stringify(metaCosts));
+  document.getElementById('meta-amount').value = '';
+  document.getElementById('meta-note').value = '';
+  renderMetaHistory();
+  alert('✓ Meta Kosten für ' + date + ' gespeichert!');
+}
+
+function deleteMetaCost(date) {
+  if (!confirm('Eintrag für ' + date + ' löschen?')) return;
+  delete metaCosts[date];
+  localStorage.setItem('femorea_meta', JSON.stringify(metaCosts));
+  renderMetaHistory();
+}
+
+function renderMetaHistory() {
+  const el = document.getElementById('meta-history');
+  const entries = Object.entries(metaCosts).sort((a,b) => b[0].localeCompare(a[0]));
+  if (!entries.length) { el.innerHTML = '<div class="empty-state">Noch keine Einträge</div>'; return; }
+  el.innerHTML = '<table><thead><tr><th>Datum</th><th>Betrag</th><th>Notiz</th><th></th></tr></thead><tbody>' +
+    entries.map(([d,v]) => `<tr><td>${d}</td><td><strong>${v.amount.toFixed(2)} €</strong></td><td style="color:#888">${v.note||'–'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteMetaCost('${d}')">Löschen</button></td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+function getMetaCostsForRange(from, to) {
+  let total = 0;
+  const f = new Date(from), t = new Date(to);
+  for (const [date, val] of Object.entries(metaCosts)) {
+    const d = new Date(date);
+    if (d >= f && d <= t) total += val.amount;
+  }
+  return total;
+}
+
+let productRowCount = 0;
+const landFlags = { DE: '🇩🇪 DE', AT: '🇦🇹 AT', CH: '🇨🇭 CH', OTHER: '🌍 Sonstige' };
+
+function addProductRow(land) {
+  productRowCount++;
+  const id = 'pr-' + productRowCount;
+  const div = document.createElement('div');
+  div.className = 'product-row'; div.id = id;
+  div.innerHTML = `
+    <input type="text" placeholder="z.B. 1 Patch Starter" id="${id}-name" />
+    <select id="${id}-land" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.82rem;">
+      <option value="DE" ${land==='DE'?'selected':''}>🇩🇪 DE</option>
+      <option value="AT" ${land==='AT'?'selected':''}>🇦🇹 AT</option>
+      <option value="CH" ${land==='CH'?'selected':''}>🇨🇭 CH</option>
+      <option value="OTHER" ${land==='OTHER'?'selected':''}>🌍 Sonstige</option>
+    </select>
+    <input type="number" placeholder="1" id="${id}-qty" min="1" step="1" value="1" />
+    <input type="number" placeholder="0.00" id="${id}-cost" step="0.01" min="0" />
+    <input type="text" placeholder="optional" id="${id}-variantid" />
+    <button class="btn btn-danger btn-sm" onclick="document.getElementById('${id}').remove()">✕</button>
+  `;
+  document.getElementById('product-rows').appendChild(div);
+}
+
+function saveProducts() {
+  const rows = document.querySelectorAll('[id^="pr-"]');
+  const newProducts = [];
+  rows.forEach(row => {
+    const id = row.id;
+    const name = document.getElementById(id+'-name').value.trim();
+    const land = document.getElementById(id+'-land').value;
+    const qty = parseInt(document.getElementById(id+'-qty').value);
+    const cost = parseFloat(document.getElementById(id+'-cost').value);
+    const variantId = document.getElementById(id+'-variantid').value.trim();
+    if (name && !isNaN(cost)) newProducts.push({ name, land, qty, cost, variantId });
+  });
+  products = newProducts;
+  localStorage.setItem('femorea_products', JSON.stringify(products));
+  document.getElementById('product-rows').innerHTML = '';
+  renderSavedProducts();
+  alert('✓ ' + products.length + ' Produkte gespeichert!');
+}
+
+function renderSavedProducts() {
+  const el = document.getElementById('saved-products-table');
+  if (!products.length) { el.innerHTML = '<div class="empty-state">Noch keine Produkte konfiguriert</div>'; return; }
+  const badgeClass = { DE: 'badge-de', AT: 'badge-at', CH: 'badge-ch', OTHER: 'badge-other' };
+  el.innerHTML = '<table><thead><tr><th>Produkt</th><th>Land</th><th>Menge</th><th>Supplier Preis</th><th>Variant ID</th></tr></thead><tbody>' +
+    products.map(p => `<tr><td>${p.name}</td><td><span class="badge ${badgeClass[p.land]||'badge-other'}">${landFlags[p.land]||p.land}</span></td><td>${p.qty}x</td><td><strong>${p.cost.toFixed(2)} €</strong></td><td style="color:#666;font-size:0.75rem">${p.variantId||'–'}</td></tr>`).join('') +
+    '</tbody></table>';
+}
+
+function getCostForItem(countryCode, qty, variantId) {
+  const land = ['DE','AT','CH'].includes(countryCode) ? countryCode : 'OTHER';
+  if (variantId) {
+    const match = products.find(p => p.variantId === String(variantId) && p.land === land);
+    if (match) return match.cost;
+  }
+  const candidates = products.filter(p => p.land === land).sort((a,b) => Math.abs(a.qty-qty) - Math.abs(b.qty-qty));
+  if (candidates.length) return candidates[0].cost;
+  const fallback = products.find(p => p.land === 'DE') || products[0];
+  return fallback ? fallback.cost : 0;
+}
+
+function getUstRate(countryCode) {
+  if (countryCode === 'AT') return parseFloat(config['cfg-ust-at'] || 20) / 100;
+  if (countryCode === 'CH') return parseFloat(config['cfg-ust-ch'] || 8.1) / 100;
+  return parseFloat(config['cfg-ust-de'] || 19) / 100;
+}
+
+async function loadDashboard() {
+  const from = document.getElementById('date-from').value;
+  const to = document.getElementById('date-to').value;
+  if (!from || !to) { alert('Bitte Zeitraum auswählen.'); return; }
+  const spinner = document.getElementById('loading-spinner');
+  spinner.style.display = 'inline-block';
+  try {
+    const [shopifyData, tiktokData] = await Promise.all([fetchShopifyOrders(from, to), fetchTikTokAdSpend(from, to)]);
+    const metaSpend = getMetaCostsForRange(from, to);
+    renderDashboard(shopifyData, tiktokData, metaSpend);
+  } catch(e) { alert('Fehler: ' + e.message); }
+  finally { spinner.style.display = 'none'; }
+}
+
+async function fetchShopifyOrders(from, to) {
+  const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
+  if (!domain || !token) return { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {} };
+  const url = `https://${domain}/admin/api/2024-01/orders.json?status=any&created_at_min=${from}T00:00:00+01:00&created_at_max=${to}T23:59:59+01:00&limit=250&financial_status=paid`;
+  const resp = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
+  if (!resp.ok) throw new Error('Shopify API Fehler: ' + resp.status);
+  const data = await resp.json();
+  const shopifyFeeRate = parseFloat(config['cfg-shopify-fee'] || 2) / 100;
+  const stripeFeeRate = parseFloat(config['cfg-stripe-fee'] || 1.5) / 100;
+  let revenue = 0, cogs = 0, fees = 0, ust = 0;
+  const byCountry = {};
+  const orders = (data.orders || []).map(order => {
+    const totalPrice = parseFloat(order.total_price);
+    const country = order.shipping_address?.country_code || 'DE';
+    const ustRate = getUstRate(country);
+    const orderUst = totalPrice * (ustRate / (1 + ustRate));
+    const orderFees = totalPrice * (shopifyFeeRate + stripeFeeRate);
+    let orderCogs = 0;
+    (order.line_items || []).forEach(item => {
+      orderCogs += getCostForItem(country, item.quantity, item.variant_id) * item.quantity;
+    });
+    if (orderCogs === 0 && products.length > 0) orderCogs = getCostForItem(country, 1, null);
+    revenue += totalPrice; cogs += orderCogs; fees += orderFees; ust += orderUst;
+    if (!byCountry[country]) byCountry[country] = { revenue: 0, cogs: 0, fees: 0, ust: 0, orders: 0 };
+    byCountry[country].revenue += totalPrice;
+    byCountry[country].cogs += orderCogs;
+    byCountry[country].fees += orderFees;
+    byCountry[country].ust += orderUst;
+    byCountry[country].orders++;
+    return { id: order.name, date: order.created_at.split('T')[0], total: totalPrice, country, cogs: orderCogs, ust: orderUst, fees: orderFees };
+  });
+  return { orders, revenue, cogs, fees, ust, byCountry };
+}
+
+async function fetchTikTokAdSpend(from, to) {
+  const token = config['cfg-tiktok-token'], advertiserId = config['cfg-tiktok-advertiser'];
+  if (!token || !advertiserId) return { spend: 0 };
+  const url = `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${advertiserId}&report_type=BASIC&dimensions=["stat_time_day"]&metrics=["spend"]&start_date=${from}&end_date=${to}&page_size=100`;
+  const resp = await fetch(url, { headers: { 'Access-Token': token } });
+  if (!resp.ok) return { spend: 0 };
+  const data = await resp.json();
+  const spend = (data.data?.list || []).reduce((sum, row) => sum + parseFloat(row.metrics?.spend || 0), 0);
+  return { spend };
+}
+
+function renderDashboard(shopify, tiktok, metaSpend) {
+  const totalAdSpend = tiktok.spend + metaSpend;
+  const netProfit = shopify.revenue - shopify.cogs - totalAdSpend - shopify.fees - shopify.ust;
+  const margin = shopify.revenue > 0 ? (netProfit / shopify.revenue * 100) : 0;
+  const roas = totalAdSpend > 0 ? (shopify.revenue / totalAdSpend) : 0;
+  const f = v => v.toFixed(2) + ' €';
+
+  document.getElementById('c-revenue').textContent = f(shopify.revenue);
+  document.getElementById('c-orders-count').textContent = shopify.orders.length + ' Bestellungen';
+  document.getElementById('c-cogs').textContent = '– ' + f(shopify.cogs);
+  document.getElementById('c-adspend').textContent = '– ' + f(totalAdSpend);
+  document.getElementById('c-tiktok-sub').textContent = 'TikTok: ' + f(tiktok.spend);
+  document.getElementById('c-meta-sub').textContent = 'Meta: ' + f(metaSpend);
+  document.getElementById('c-fees').textContent = '– ' + f(shopify.fees);
+  document.getElementById('c-ust').textContent = f(shopify.ust);
+  const profitEl = document.getElementById('c-profit');
+  profitEl.textContent = f(netProfit);
+  profitEl.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
+  document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
+  document.getElementById('c-margin').textContent = 'Marge: ' + margin.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
+
+  // Country breakdown
+  const countryInfo = {
+    DE: { flag: '🇩🇪', name: 'Deutschland', badge: 'badge-de' },
+    AT: { flag: '🇦🇹', name: 'Österreich', badge: 'badge-at' },
+    CH: { flag: '🇨🇭', name: 'Schweiz', badge: 'badge-ch' }
+  };
+  const cbEl = document.getElementById('country-breakdown');
+  const countries = Object.entries(shopify.byCountry).sort((a,b) => b[1].revenue - a[1].revenue);
+  if (!countries.length) {
+    cbEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Keine Bestellungen im gewählten Zeitraum</div>';
+  } else {
+    cbEl.innerHTML = countries.map(([code, d]) => {
+      const info = countryInfo[code] || { flag: '🌍', name: code, badge: 'badge-other' };
+      const profit = d.revenue - d.cogs - d.fees - d.ust;
+      const ustLabel = code === 'AT' ? '20%' : code === 'CH' ? '8.1%' : '19%';
+      return `<div class="country-card">
+        <h4><span class="flag">${info.flag}</span>${info.name} <span style="font-size:0.7rem;color:#666;font-weight:400">(${d.orders} Bestellungen · USt ${ustLabel})</span></h4>
+        <div class="row"><span>Umsatz</span><span>${f(d.revenue)}</span></div>
+        <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f(d.cogs)}</span></div>
+        <div class="row"><span>Gebühren</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
+        <div class="row"><span>USt (${ustLabel})</span><span style="color:#fdcb6e">– ${f(d.ust)}</span></div>
+        <div class="row" style="border-top:1px solid #2a2a3a;margin-top:6px;padding-top:6px;font-weight:700"><span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  // P&L
+  document.getElementById('pnl-table').innerHTML = `
+    <div class="summary-row"><span>Brutto-Umsatz</span><span>${f(shopify.revenue)}</span></div>
+    <div class="summary-row"><span style="color:#e17055">– Produktkosten</span><span style="color:#e17055">– ${f(shopify.cogs)}</span></div>
+    <div class="summary-row"><span style="color:#e17055">– TikTok Ads</span><span style="color:#e17055">– ${f(tiktok.spend)}</span></div>
+    <div class="summary-row"><span style="color:#e17055">– Meta Ads (manuell)</span><span style="color:#e17055">– ${f(metaSpend)}</span></div>
+    <div class="summary-row"><span style="color:#e17055">– Shopify & Stripe</span><span style="color:#e17055">– ${f(shopify.fees)}</span></div>
+    <div class="summary-row"><span style="color:#fdcb6e">– USt</span><span style="color:#fdcb6e">– ${f(shopify.ust)}</span></div>
+    <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a"><span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'};font-size:1.05rem">${f(netProfit)}</span></div>
+  `;
+
+  // Ads breakdown
+  const adPct = shopify.revenue > 0 ? (totalAdSpend / shopify.revenue * 100) : 0;
+  document.getElementById('ads-breakdown').innerHTML = `
+    <div class="summary-row"><span>TikTok Ads</span><span style="color:#e17055">${f(tiktok.spend)}</span></div>
+    <div class="summary-row"><span>Meta Ads (manuell)</span><span style="color:#e17055">${f(metaSpend)}</span></div>
+    <div class="summary-row" style="border-top:2px solid #2a2a3a;margin-top:8px;padding-top:12px"><span>Gesamt Werbekosten</span><span style="color:#e17055;font-size:1.05rem">${f(totalAdSpend)}</span></div>
+    <div class="summary-row"><span>Anteil am Umsatz</span><span style="color:#fdcb6e">${adPct.toFixed(1)}%</span></div>
+    <div class="summary-row"><span>ROAS</span><span style="color:#00b894;font-size:1.05rem">${roas.toFixed(2)}x</span></div>
+    <div class="summary-row"><span>Kosten pro Bestellung</span><span>${shopify.orders.length > 0 ? f(totalAdSpend / shopify.orders.length) : '–'}</span></div>
+  `;
+
+  // Orders table
+  if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
+  const badgeClass = { DE: 'badge-de', AT: 'badge-at', CH: 'badge-ch' };
+  document.getElementById('orders-table').innerHTML = '<table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Gebühren</th><th>USt</th><th>Profit</th></tr></thead><tbody>' +
+    shopify.orders.map(o => {
+      const p = o.total - o.cogs - o.fees - o.ust;
+      const flag = o.country === 'DE' ? '🇩🇪' : o.country === 'AT' ? '🇦🇹' : o.country === 'CH' ? '🇨🇭' : '🌍';
+      return `<tr>
+        <td><strong>${o.id}</strong></td>
+        <td style="color:#888">${o.date}</td>
+        <td><span class="badge ${badgeClass[o.country]||'badge-other'}">${flag} ${o.country}</span></td>
+        <td>${f(o.total)}</td>
+        <td style="color:#e17055">– ${f(o.cogs)}</td>
+        <td style="color:#e17055">– ${f(o.fees)}</td>
+        <td style="color:#fdcb6e">– ${f(o.ust)}</td>
+        <td style="color:${p>=0?'#00b894':'#e17055'};font-weight:700">${f(p)}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+window.onload = () => {
+  loadState(); setToday();
+  document.getElementById('meta-date').value = new Date().toISOString().split('T')[0];
+};
+</script>
+</body>
+</html>
