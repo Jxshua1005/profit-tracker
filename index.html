@@ -607,8 +607,12 @@ async function fetchShopifyOrders(from, to) {
   const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify API Fehler: ' + resp.status);
   const data = await resp.json();
-  const shopifyFeeRate = parseFloat(config['cfg-shopify-fee'] || 2) / 100;
-  const stripeFeeRate = parseFloat(config['cfg-stripe-fee'] || 1.5) / 100;
+  const shopifyFeeRate = 0; // Shopify Payments = 0% Transaktionsgebühr
+const getPaymentFee = (country, orderTotal) => {
+  const percentFee = country === 'CH' ? 0.042 : 0.027; // CH: 2.7% + 1.5% Umrechnung
+  const fixedFee = 0.30; // 0.30€ immer fix pro Bestellung
+  return (orderTotal * percentFee) + fixedFee;
+};
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
   const byCountry = {};
   const orders = (data.orders || []).map(order => {
