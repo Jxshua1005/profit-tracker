@@ -112,8 +112,6 @@
       <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setLast7()">7 Tage</button>
       <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setThisMonth()">Dieser Monat</button>
     </div>
-
-    <!-- GESAMT KARTEN -->
     <div class="cards">
       <div class="card"><div class="label">Umsatz Gesamt</div><div class="value" id="c-revenue">–</div><div class="sub" id="c-orders-count">– Bestellungen</div></div>
       <div class="card"><div class="label">Produktkosten</div><div class="value red" id="c-cogs">–</div><div class="sub">Supplier Endpreise</div></div>
@@ -125,16 +123,12 @@
         <div class="sub" id="c-margin">Marge: – | ROAS: –</div>
       </div>
     </div>
-
-    <!-- AUFSCHLÜSSELUNG NACH LAND -->
     <div class="panel">
       <h3>🌍 Aufschlüsselung nach Land</h3>
       <div class="country-breakdown" id="country-breakdown">
         <div class="empty-state" style="grid-column:1/-1">Daten laden um Länder-Aufschlüsselung zu sehen</div>
       </div>
     </div>
-
-    <!-- P&L + WERBEKOSTEN NEBENEINANDER -->
     <div class="pnl-grid">
       <div class="panel">
         <h3>Gewinn & Verlust</h3>
@@ -145,7 +139,6 @@
         <div id="ads-breakdown"><div class="empty-state">Keine Daten</div></div>
       </div>
     </div>
-
     <div class="panel">
       <h3>Bestellungen</h3>
       <div id="orders-table"><div class="empty-state">Keine Daten geladen</div></div>
@@ -156,7 +149,7 @@
   <div class="section" id="tab-meta">
     <div class="panel">
       <h3>Meta Werbekosten – tägliche Eingabe</h3>
-      <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine Meta/Facebook Ausgaben ein. Werden automatisch im Dashboard addiert.</p>
+      <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine Meta/Facebook Ausgaben ein.</p>
       <div class="meta-daily">
         <div class="form-group"><label>Datum</label><input type="date" id="meta-date" /></div>
         <div class="form-group"><label>Werbekosten (€)</label><input type="number" id="meta-amount" placeholder="z.B. 47.50" step="0.01" min="0" /></div>
@@ -229,6 +222,7 @@
 </div>
 
 <script>
+const PROXY = 'https://shopify-proxy.joshuaschulte-business.workers.dev';
 let config = {}, products = [], metaCosts = {};
 
 function loadState() {
@@ -396,10 +390,22 @@ async function loadDashboard() {
 async function fetchShopifyOrders(from, to) {
   const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
   if (!domain || !token) return { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {} };
-  const url = `https://${domain}/admin/api/2024-01/orders.json?status=any&created_at_min=${from}T00:00:00+01:00&created_at_max=${to}T23:59:59+01:00&limit=250&financial_status=paid`;
-  const resp = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
+
+  const params = new URLSearchParams({
+    shop: domain,
+    token: token,
+    path: 'orders.json',
+    status: 'any',
+    created_at_min: from + 'T00:00:00+01:00',
+    created_at_max: to + 'T23:59:59+01:00',
+    limit: '250',
+    financial_status: 'paid'
+  });
+
+  const resp = await fetch(`${PROXY}?${params.toString()}`);
   if (!resp.ok) throw new Error('Shopify API Fehler: ' + resp.status);
   const data = await resp.json();
+
   const shopifyFeeRate = parseFloat(config['cfg-shopify-fee'] || 2) / 100;
   const stripeFeeRate = parseFloat(config['cfg-stripe-fee'] || 1.5) / 100;
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
@@ -430,12 +436,14 @@ async function fetchShopifyOrders(from, to) {
 async function fetchTikTokAdSpend(from, to) {
   const token = config['cfg-tiktok-token'], advertiserId = config['cfg-tiktok-advertiser'];
   if (!token || !advertiserId) return { spend: 0 };
-  const url = `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${advertiserId}&report_type=BASIC&dimensions=["stat_time_day"]&metrics=["spend"]&start_date=${from}&end_date=${to}&page_size=100`;
-  const resp = await fetch(url, { headers: { 'Access-Token': token } });
-  if (!resp.ok) return { spend: 0 };
-  const data = await resp.json();
-  const spend = (data.data?.list || []).reduce((sum, row) => sum + parseFloat(row.metrics?.spend || 0), 0);
-  return { spend };
+  try {
+    const url = `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${advertiserId}&report_type=BASIC&dimensions=["stat_time_day"]&metrics=["spend"]&start_date=${from}&end_date=${to}&page_size=100`;
+    const resp = await fetch(url, { headers: { 'Access-Token': token } });
+    if (!resp.ok) return { spend: 0 };
+    const data = await resp.json();
+    const spend = (data.data?.list || []).reduce((sum, row) => sum + parseFloat(row.metrics?.spend || 0), 0);
+    return { spend };
+  } catch(e) { return { spend: 0 }; }
 }
 
 function renderDashboard(shopify, tiktok, metaSpend) {
@@ -459,7 +467,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
   document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
   document.getElementById('c-margin').textContent = 'Marge: ' + margin.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
 
-  // Country breakdown
   const countryInfo = {
     DE: { flag: '🇩🇪', name: 'Deutschland', badge: 'badge-de' },
     AT: { flag: '🇦🇹', name: 'Österreich', badge: 'badge-at' },
@@ -485,7 +492,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
     }).join('');
   }
 
-  // P&L
   document.getElementById('pnl-table').innerHTML = `
     <div class="summary-row"><span>Brutto-Umsatz</span><span>${f(shopify.revenue)}</span></div>
     <div class="summary-row"><span style="color:#e17055">– Produktkosten</span><span style="color:#e17055">– ${f(shopify.cogs)}</span></div>
@@ -496,7 +502,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
     <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a"><span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'};font-size:1.05rem">${f(netProfit)}</span></div>
   `;
 
-  // Ads breakdown
   const adPct = shopify.revenue > 0 ? (totalAdSpend / shopify.revenue * 100) : 0;
   document.getElementById('ads-breakdown').innerHTML = `
     <div class="summary-row"><span>TikTok Ads</span><span style="color:#e17055">${f(tiktok.spend)}</span></div>
@@ -507,7 +512,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
     <div class="summary-row"><span>Kosten pro Bestellung</span><span>${shopify.orders.length > 0 ? f(totalAdSpend / shopify.orders.length) : '–'}</span></div>
   `;
 
-  // Orders table
   if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
   const badgeClass = { DE: 'badge-de', AT: 'badge-at', CH: 'badge-ch' };
   document.getElementById('orders-table').innerHTML = '<table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Gebühren</th><th>USt</th><th>Profit</th></tr></thead><tbody>' +
