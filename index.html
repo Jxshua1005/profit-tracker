@@ -47,7 +47,13 @@
     .badge-ch { background: #fdcb6e22; color: #fdcb6e; }
     .badge-other { background: #a29bfe22; color: #a29bfe; }
     .date-range { display: flex; gap: 8px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-    .date-range input { background: #18181f; border: 1px solid #2a2a3a; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 0.85rem; outline: none; }
+    .date-range input[type="date"] { background: #18181f; border: 1px solid #2a2a3a; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 0.85rem; outline: none; transition: border 0.2s; }
+    .date-range input[type="date"]:focus { border-color: #6c5ce7; }
+    .btn-quick { background: #18181f; border: 1px solid #2a2a3a; color: #888; }
+    .btn-quick:hover { border-color: #6c5ce7; color: #fff; }
+    .btn-quick.active { background: #6c5ce7; border-color: #6c5ce7; color: #fff; }
+    #btn-load { display: none; }
+    #btn-load.visible { display: inline-block; }
     .api-status { display: flex; gap: 6px; align-items: center; font-size: 0.78rem; }
     .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .dot-green { background: #00b894; }
@@ -55,10 +61,10 @@
     .dot-yellow { background: #fdcb6e; }
     .status-bar { display: flex; gap: 18px; flex-wrap: wrap; }
     .divider { width: 1px; background: #2a2a3a; }
-    .product-row { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr 1fr auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid #1a1a24; }
+    .product-row { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr auto; gap: 8px; align-items: center; padding: 9px 0; border-bottom: 1px solid #1a1a24; }
     .product-row:last-child { border-bottom: none; }
     .product-row input, .product-row select { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 7px; padding: 7px 9px; color: #fff; font-size: 0.82rem; outline: none; width: 100%; }
-    .product-header { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr 1fr auto; gap: 8px; padding: 4px 0 10px; }
+    .product-header { display: grid; grid-template-columns: 2fr 0.8fr 0.7fr 0.9fr auto; gap: 8px; padding: 4px 0 10px; }
     .product-header span { font-size: 0.7rem; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
     .loading { display: inline-block; width: 13px; height: 13px; border: 2px solid #444; border-top-color: #6c5ce7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 8px; vertical-align: middle; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -77,6 +83,19 @@
     .flag { font-size: 1.1rem; margin-right: 6px; }
     .pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     @media (max-width: 700px) { .pnl-grid { grid-template-columns: 1fr; } }
+    .shopify-product-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .shopify-product-item { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .shopify-product-item .prod-name { font-size: 0.85rem; font-weight: 600; color: #fff; flex: 1; min-width: 180px; }
+    .shopify-product-item .prod-variant { font-size: 0.72rem; color: #555; margin-top: 2px; }
+    .shopify-product-item .prod-inputs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .shopify-product-item .prod-inputs input,
+    .shopify-product-item .prod-inputs select { background: #18181f; border: 1px solid #2a2a3a; border-radius: 7px; padding: 6px 9px; color: #fff; font-size: 0.82rem; outline: none; width: auto; }
+    .shopify-product-item .prod-inputs input { width: 80px; }
+    .bundle-section { margin-top: 18px; border-top: 1px solid #2a2a3a; padding-top: 16px; }
+    .bundle-row { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .bundle-row .bundle-name { font-size: 0.85rem; font-weight: 600; color: #a29bfe; margin-bottom: 8px; }
+    .bundle-products { display: flex; gap: 6px; flex-wrap: wrap; }
+    .bundle-tag { background: #2a2a3a; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: #ccc; }
   </style>
 </head>
 <body>
@@ -103,14 +122,15 @@
   <!-- DASHBOARD -->
   <div class="section active" id="tab-dashboard">
     <div class="date-range">
-      <input type="date" id="date-from" />
+      <button class="btn btn-quick" id="qbtn-today" onclick="quickFilter('today',this)">Heute</button>
+      <button class="btn btn-quick" id="qbtn-yesterday" onclick="quickFilter('yesterday',this)">Gestern</button>
+      <button class="btn btn-quick" id="qbtn-7days" onclick="quickFilter('7days',this)">7 Tage</button>
+      <button class="btn btn-quick" id="qbtn-month" onclick="quickFilter('month',this)">Dieser Monat</button>
+      <div class="divider" style="height:34px;"></div>
+      <input type="date" id="date-from" onchange="onDateChange()" />
       <span style="color:#666">bis</span>
-      <input type="date" id="date-to" />
-      <button class="btn btn-primary" onclick="loadDashboard()">Laden <span id="loading-spinner" style="display:none" class="loading"></span></button>
-      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setToday()">Heute</button>
-      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setYesterday()">Gestern</button>
-      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setLast7()">7 Tage</button>
-      <button class="btn" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="setThisMonth()">Dieser Monat</button>
+      <input type="date" id="date-to" onchange="onDateChange()" />
+      <button class="btn btn-primary" id="btn-load" onclick="loadDashboard()">Laden <span id="loading-spinner" style="display:none" class="loading"></span></button>
     </div>
     <div class="cards">
       <div class="card"><div class="label">Umsatz Gesamt</div><div class="value" id="c-revenue">–</div><div class="sub" id="c-orders-count">– Bestellungen</div></div>
@@ -126,13 +146,13 @@
     <div class="panel">
       <h3>🌍 Aufschlüsselung nach Land</h3>
       <div class="country-breakdown" id="country-breakdown">
-        <div class="empty-state" style="grid-column:1/-1">Daten laden um Länder-Aufschlüsselung zu sehen</div>
+        <div class="empty-state" style="grid-column:1/-1">Zeitraum auswählen um Länder-Aufschlüsselung zu sehen</div>
       </div>
     </div>
     <div class="pnl-grid">
       <div class="panel">
         <h3>Gewinn & Verlust</h3>
-        <div id="pnl-table"><div class="empty-state">Zeitraum auswählen und "Laden" klicken</div></div>
+        <div id="pnl-table"><div class="empty-state">Zeitraum auswählen</div></div>
       </div>
       <div class="panel">
         <h3>📣 Werbekosten Aufschlüsselung</h3>
@@ -166,22 +186,25 @@
   <!-- PRODUKTE -->
   <div class="section" id="tab-produkte">
     <div class="panel">
-      <h3>Produktkosten nach Land & Menge</h3>
-      <p style="font-size:0.82rem;color:#666;margin-bottom:16px;">Supplier Endpreis inkl. Versand – separat für 🇩🇪 DE, 🇦🇹 AT, 🇨🇭 CH und Sonstige.</p>
-      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="addProductRow('DE')">+ 🇩🇪 DE</button>
-        <button class="btn btn-primary btn-sm" onclick="addProductRow('AT')">+ 🇦🇹 AT</button>
-        <button class="btn btn-primary btn-sm" onclick="addProductRow('CH')">+ 🇨🇭 CH</button>
-        <button class="btn btn-primary btn-sm" onclick="addProductRow('OTHER')">+ 🌍 Sonstige</button>
+      <h3>Produkte aus Shopify</h3>
+      <p style="font-size:0.82rem;color:#666;margin-bottom:14px;">Lade deine Produkte direkt aus dem Shopify Store – wähle dann Menge, Land und Supplier-Preis.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary btn-sm" onclick="loadShopifyProducts()">
+          🔄 Produkte aus Shopify laden <span id="shopify-load-spinner" style="display:none" class="loading"></span>
+        </button>
+        <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="addManualProductRow()">+ Manuell hinzufügen</button>
+        <span id="shopify-load-msg" style="font-size:0.78rem;color:#00b894;display:none;"></span>
       </div>
-      <div style="overflow-x:auto;">
-        <div class="product-header">
-          <span>Produktname / Variante</span><span>Land</span><span>Menge</span><span>Supplier Preis (€)</span><span>Shopify Variant ID</span><span></span>
+      <div id="shopify-product-list"></div>
+      <div class="bundle-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h3 style="margin:0;">📦 Bundles</h3>
+          <button class="btn btn-primary btn-sm" onclick="openBundleCreator()">+ Bundle erstellen</button>
         </div>
-        <div id="product-rows"></div>
+        <div id="bundle-list"><div class="empty-state" style="padding:16px">Noch keine Bundles erstellt</div></div>
       </div>
-      <div style="margin-top:14px;">
-        <button class="btn btn-success" onclick="saveProducts()">💾 Alle Produktkosten speichern</button>
+      <div style="margin-top:18px;border-top:1px solid #2a2a3a;padding-top:16px;">
+        <button class="btn btn-success" onclick="saveAllProducts()">💾 Alle Produktkosten speichern</button>
       </div>
     </div>
     <div class="panel">
@@ -221,18 +244,41 @@
   </div>
 </div>
 
+<!-- Bundle Creator Modal -->
+<div id="bundle-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center;">
+  <div style="background:#18181f;border:1px solid #2a2a3a;border-radius:14px;padding:28px;width:90%;max-width:520px;">
+    <h3 style="margin-bottom:16px;color:#fff;">📦 Bundle erstellen</h3>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Bundle Name</label>
+      <input type="text" id="bundle-name-input" placeholder="z.B. Starter Set Bundle" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:9px 12px;color:#fff;font-size:0.88rem;outline:none;width:100%;" />
+    </div>
+    <p style="font-size:0.78rem;color:#666;margin-bottom:10px;">Produkte auswählen die zum Bundle gehören:</p>
+    <div id="bundle-product-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" style="background:#2a2a3a;color:#888;" onclick="closeBundleModal()">Abbrechen</button>
+      <button class="btn btn-success" onclick="saveBundle()">Bundle speichern</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const PROXY = 'https://shopify-proxy.joshuaschulte-business.workers.dev';
-let config = {}, products = [], metaCosts = {};
+let config = {}, products = [], metaCosts = {}, bundles = [];
+let shopifyProductCache = [];
+let activeQuickFilter = null;
+let customRangeActive = false;
 
 function loadState() {
   try { config = JSON.parse(localStorage.getItem('femorea_config') || '{}'); } catch(e) {}
   try { products = JSON.parse(localStorage.getItem('femorea_products') || '[]'); } catch(e) {}
   try { metaCosts = JSON.parse(localStorage.getItem('femorea_meta') || '{}'); } catch(e) {}
+  try { bundles = JSON.parse(localStorage.getItem('femorea_bundles') || '[]'); } catch(e) {}
+  try { shopifyProductCache = JSON.parse(localStorage.getItem('femorea_shopify_products') || '[]'); } catch(e) {}
   ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-ust-de','cfg-ust-at','cfg-ust-ch','cfg-shopify-fee','cfg-stripe-fee'].forEach(id => {
     if (config[id] !== undefined) document.getElementById(id).value = config[id];
   });
-  renderSavedProducts(); renderMetaHistory(); updateApiStatus();
+  renderSavedProducts(); renderMetaHistory(); updateApiStatus(); renderBundleList();
+  if (shopifyProductCache.length) renderShopifyProductList(shopifyProductCache);
 }
 
 function saveConfig() {
@@ -259,10 +305,233 @@ function showTab(name, btn) {
 }
 
 function fmt(d) { return d.toISOString().split('T')[0]; }
-function setToday() { const d = fmt(new Date()); document.getElementById('date-from').value = d; document.getElementById('date-to').value = d; }
-function setYesterday() { const d = new Date(); d.setDate(d.getDate()-1); const s = fmt(d); document.getElementById('date-from').value = s; document.getElementById('date-to').value = s; }
-function setLast7() { const t = new Date(), f = new Date(); f.setDate(f.getDate()-6); document.getElementById('date-from').value = fmt(f); document.getElementById('date-to').value = fmt(t); }
-function setThisMonth() { const d = new Date(); document.getElementById('date-from').value = fmt(new Date(d.getFullYear(), d.getMonth(), 1)); document.getElementById('date-to').value = fmt(d); }
+
+function setActiveQuickBtn(id) {
+  ['qbtn-today','qbtn-yesterday','qbtn-7days','qbtn-month'].forEach(b => document.getElementById(b).classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+function showLoadBtn(visible) {
+  const btn = document.getElementById('btn-load');
+  btn.classList.toggle('visible', visible);
+}
+
+function quickFilter(type, btn) {
+  const d = new Date();
+  let from, to = fmt(d);
+  if (type === 'today') { from = fmt(d); }
+  else if (type === 'yesterday') { const y = new Date(d); y.setDate(y.getDate()-1); from = fmt(y); to = fmt(y); }
+  else if (type === '7days') { const f = new Date(d); f.setDate(f.getDate()-6); from = fmt(f); }
+  else if (type === 'month') { from = fmt(new Date(d.getFullYear(), d.getMonth(), 1)); }
+  document.getElementById('date-from').value = from;
+  document.getElementById('date-to').value = to;
+  setActiveQuickBtn('qbtn-' + (type === '7days' ? '7days' : type === 'yesterday' ? 'yesterday' : type === 'month' ? 'month' : 'today'));
+  showLoadBtn(false);
+  customRangeActive = false;
+  loadDashboard();
+}
+
+function onDateChange() {
+  setActiveQuickBtn(null);
+  customRangeActive = true;
+  showLoadBtn(true);
+}
+
+async function loadDashboard() {
+  const from = document.getElementById('date-from').value;
+  const to = document.getElementById('date-to').value;
+  if (!from || !to) { alert('Bitte Zeitraum auswählen.'); return; }
+  const spinner = document.getElementById('loading-spinner');
+  spinner.style.display = 'inline-block';
+  try {
+    const [shopifyData, tiktokData] = await Promise.all([fetchShopifyOrders(from, to), fetchTikTokAdSpend(from, to)]);
+    const metaSpend = getMetaCostsForRange(from, to);
+    renderDashboard(shopifyData, tiktokData, metaSpend);
+  } catch(e) { alert('Fehler: ' + e.message); }
+  finally { spinner.style.display = 'none'; }
+}
+
+async function loadShopifyProducts() {
+  const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
+  if (!domain || !token) { alert('Bitte erst Shopify Domain und Token in den Einstellungen speichern.'); return; }
+  const spinner = document.getElementById('shopify-load-spinner');
+  const msg = document.getElementById('shopify-load-msg');
+  spinner.style.display = 'inline-block';
+  msg.style.display = 'none';
+  try {
+    const params = new URLSearchParams({ shop: domain, token, path: 'products.json', limit: '250', fields: 'id,title,variants' });
+    const resp = await fetch(`${PROXY}?${params}`);
+    if (!resp.ok) throw new Error('Shopify API Fehler: ' + resp.status);
+    const data = await resp.json();
+    shopifyProductCache = (data.products || []).flatMap(p =>
+      p.variants.map(v => ({
+        productId: p.id,
+        variantId: String(v.id),
+        title: p.title,
+        variantTitle: v.title === 'Default Title' ? '' : v.title,
+        price: parseFloat(v.price) || 0
+      }))
+    );
+    localStorage.setItem('femorea_shopify_products', JSON.stringify(shopifyProductCache));
+    renderShopifyProductList(shopifyProductCache);
+    msg.style.display = 'inline';
+    msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen';
+  } catch(e) { alert('Fehler beim Laden: ' + e.message); }
+  finally { spinner.style.display = 'none'; }
+}
+
+function renderShopifyProductList(items) {
+  const container = document.getElementById('shopify-product-list');
+  if (!items.length) { container.innerHTML = '<div class="empty-state">Keine Produkte gefunden</div>'; return; }
+  const savedMap = {};
+  products.forEach(p => { savedMap[p.variantId + '_' + p.land] = p; });
+  const flags = { DE: '🇩🇪', AT: '🇦🇹', CH: '🇨🇭', OTHER: '🌍' };
+  const lands = ['DE', 'AT', 'CH', 'OTHER'];
+  container.innerHTML = '<div class="shopify-product-list">' +
+    items.map(item => {
+      const displayName = item.title + (item.variantTitle ? ' – ' + item.variantTitle : '');
+      const rows = lands.map(land => {
+        const saved = savedMap[item.variantId + '_' + land];
+        const qty = saved ? saved.qty : 1;
+        const cost = saved ? saved.cost.toFixed(2) : '';
+        return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+          <span style="font-size:0.75rem;color:#888;width:24px;">${flags[land]}</span>
+          <select id="land-${item.variantId}-${land}" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.78rem;width:90px;">
+            <option value="DE" ${land==='DE'?'selected':''}>🇩🇪 DE</option>
+            <option value="AT" ${land==='AT'?'selected':''}>🇦🇹 AT</option>
+            <option value="CH" ${land==='CH'?'selected':''}>🇨🇭 CH</option>
+            <option value="OTHER" ${land==='OTHER'?'selected':''}>🌍 Sonstige</option>
+          </select>
+          <input type="number" min="1" step="1" value="${qty}" id="qty-${item.variantId}-${land}" placeholder="Menge" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.78rem;width:65px;" />
+          <input type="number" min="0" step="0.01" value="${cost}" id="cost-${item.variantId}-${land}" placeholder="Preis €" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.78rem;width:80px;" />
+        </div>`;
+      }).join('');
+      return `<div class="shopify-product-item" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:flex-start;">
+          <div>
+            <div class="prod-name">${displayName}</div>
+            <div class="prod-variant">Variant ID: ${item.variantId} | Shopify Preis: ${item.price.toFixed(2)} €</div>
+          </div>
+        </div>
+        <div style="width:100%;margin-top:8px;">${rows}</div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function addManualProductRow() {
+  const container = document.getElementById('shopify-product-list');
+  const id = 'manual-' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'shopify-product-item';
+  div.id = id;
+  div.style.flexDirection = 'column';
+  div.style.alignItems = 'flex-start';
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;width:100%;align-items:center;">
+      <input type="text" placeholder="Produktname" id="${id}-name" style="flex:1;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.85rem;outline:none;" />
+      <input type="text" placeholder="Variant ID (optional)" id="${id}-vid" style="width:160px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.82rem;outline:none;" />
+      <button class="btn btn-danger btn-sm" onclick="document.getElementById('${id}').remove()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <select id="${id}-land" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:6px 9px;color:#fff;font-size:0.82rem;">
+        <option value="DE">🇩🇪 DE</option><option value="AT">🇦🇹 AT</option><option value="CH">🇨🇭 CH</option><option value="OTHER">🌍 Sonstige</option>
+      </select>
+      <input type="number" min="1" value="1" id="${id}-qty" placeholder="Menge" style="width:70px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:6px 9px;color:#fff;font-size:0.82rem;outline:none;" />
+      <input type="number" min="0" step="0.01" id="${id}-cost" placeholder="Preis €" style="width:90px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:6px 9px;color:#fff;font-size:0.82rem;outline:none;" />
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function saveAllProducts() {
+  const newProducts = [];
+  shopifyProductCache.forEach(item => {
+    ['DE','AT','CH','OTHER'].forEach(land => {
+      const costEl = document.getElementById('cost-' + item.variantId + '-' + land);
+      const qtyEl = document.getElementById('qty-' + item.variantId + '-' + land);
+      if (costEl && qtyEl) {
+        const cost = parseFloat(costEl.value);
+        const qty = parseInt(qtyEl.value) || 1;
+        if (!isNaN(cost) && cost > 0) {
+          const displayName = item.title + (item.variantTitle ? ' – ' + item.variantTitle : '');
+          newProducts.push({ name: displayName, land, qty, cost, variantId: item.variantId });
+        }
+      }
+    });
+  });
+  document.querySelectorAll('[id^="manual-"]').forEach(row => {
+    const id = row.id;
+    const nameEl = document.getElementById(id + '-name');
+    const landEl = document.getElementById(id + '-land');
+    const qtyEl = document.getElementById(id + '-qty');
+    const costEl = document.getElementById(id + '-cost');
+    const vidEl = document.getElementById(id + '-vid');
+    if (nameEl && landEl && qtyEl && costEl) {
+      const name = nameEl.value.trim();
+      const cost = parseFloat(costEl.value);
+      if (name && !isNaN(cost) && cost > 0) {
+        newProducts.push({ name, land: landEl.value, qty: parseInt(qtyEl.value)||1, cost, variantId: vidEl ? vidEl.value.trim() : '' });
+      }
+    }
+  });
+  products = newProducts;
+  localStorage.setItem('femorea_products', JSON.stringify(products));
+  renderSavedProducts();
+  alert('✓ ' + products.length + ' Produktkonfigurationen gespeichert!');
+}
+
+function openBundleCreator() {
+  const all = [...shopifyProductCache.map(i => ({ id: i.variantId, label: i.title + (i.variantTitle ? ' – ' + i.variantTitle : '') })),
+    ...products.filter(p => !shopifyProductCache.find(s => s.variantId === p.variantId)).map(p => ({ id: p.variantId || p.name, label: p.name }))];
+  const unique = [...new Map(all.map(x => [x.id, x])).values()];
+  document.getElementById('bundle-product-checkboxes').innerHTML = unique.map(p =>
+    `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.84rem;color:#ccc;">
+      <input type="checkbox" value="${p.id}" style="accent-color:#6c5ce7;" /> ${p.label}
+    </label>`
+  ).join('');
+  document.getElementById('bundle-name-input').value = '';
+  document.getElementById('bundle-modal').style.display = 'flex';
+}
+
+function closeBundleModal() { document.getElementById('bundle-modal').style.display = 'none'; }
+
+function saveBundle() {
+  const name = document.getElementById('bundle-name-input').value.trim();
+  if (!name) { alert('Bitte Bundle-Name eingeben.'); return; }
+  const checked = [...document.querySelectorAll('#bundle-product-checkboxes input:checked')].map(i => i.value);
+  if (checked.length < 2) { alert('Bitte mindestens 2 Produkte auswählen.'); return; }
+  const labels = checked.map(id => {
+    const cached = shopifyProductCache.find(p => p.variantId === id);
+    if (cached) return cached.title + (cached.variantTitle ? ' – ' + cached.variantTitle : '');
+    const saved = products.find(p => p.variantId === id || p.name === id);
+    return saved ? saved.name : id;
+  });
+  bundles.push({ name, variantIds: checked, labels });
+  localStorage.setItem('femorea_bundles', JSON.stringify(bundles));
+  renderBundleList();
+  closeBundleModal();
+}
+
+function deleteBundle(idx) {
+  if (!confirm('Bundle löschen?')) return;
+  bundles.splice(idx, 1);
+  localStorage.setItem('femorea_bundles', JSON.stringify(bundles));
+  renderBundleList();
+}
+
+function renderBundleList() {
+  const el = document.getElementById('bundle-list');
+  if (!bundles.length) { el.innerHTML = '<div class="empty-state" style="padding:16px">Noch keine Bundles erstellt</div>'; return; }
+  el.innerHTML = bundles.map((b, idx) => `
+    <div class="bundle-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="bundle-name">📦 ${b.name}</div>
+        <button class="btn btn-danger btn-sm" onclick="deleteBundle(${idx})">✕</button>
+      </div>
+      <div class="bundle-products">${b.labels.map(l => `<span class="bundle-tag">${l}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
 
 function saveMetaCost() {
   const date = document.getElementById('meta-date').value;
@@ -303,55 +572,13 @@ function getMetaCostsForRange(from, to) {
   return total;
 }
 
-let productRowCount = 0;
-const landFlags = { DE: '🇩🇪 DE', AT: '🇦🇹 AT', CH: '🇨🇭 CH', OTHER: '🌍 Sonstige' };
-
-function addProductRow(land) {
-  productRowCount++;
-  const id = 'pr-' + productRowCount;
-  const div = document.createElement('div');
-  div.className = 'product-row'; div.id = id;
-  div.innerHTML = `
-    <input type="text" placeholder="z.B. 1 Patch Starter" id="${id}-name" />
-    <select id="${id}-land" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.82rem;">
-      <option value="DE" ${land==='DE'?'selected':''}>🇩🇪 DE</option>
-      <option value="AT" ${land==='AT'?'selected':''}>🇦🇹 AT</option>
-      <option value="CH" ${land==='CH'?'selected':''}>🇨🇭 CH</option>
-      <option value="OTHER" ${land==='OTHER'?'selected':''}>🌍 Sonstige</option>
-    </select>
-    <input type="number" placeholder="1" id="${id}-qty" min="1" step="1" value="1" />
-    <input type="number" placeholder="0.00" id="${id}-cost" step="0.01" min="0" />
-    <input type="text" placeholder="optional" id="${id}-variantid" />
-    <button class="btn btn-danger btn-sm" onclick="document.getElementById('${id}').remove()">✕</button>
-  `;
-  document.getElementById('product-rows').appendChild(div);
-}
-
-function saveProducts() {
-  const rows = document.querySelectorAll('[id^="pr-"]');
-  const newProducts = [];
-  rows.forEach(row => {
-    const id = row.id;
-    const name = document.getElementById(id+'-name').value.trim();
-    const land = document.getElementById(id+'-land').value;
-    const qty = parseInt(document.getElementById(id+'-qty').value);
-    const cost = parseFloat(document.getElementById(id+'-cost').value);
-    const variantId = document.getElementById(id+'-variantid').value.trim();
-    if (name && !isNaN(cost)) newProducts.push({ name, land, qty, cost, variantId });
-  });
-  products = newProducts;
-  localStorage.setItem('femorea_products', JSON.stringify(products));
-  document.getElementById('product-rows').innerHTML = '';
-  renderSavedProducts();
-  alert('✓ ' + products.length + ' Produkte gespeichert!');
-}
-
 function renderSavedProducts() {
   const el = document.getElementById('saved-products-table');
   if (!products.length) { el.innerHTML = '<div class="empty-state">Noch keine Produkte konfiguriert</div>'; return; }
   const badgeClass = { DE: 'badge-de', AT: 'badge-at', CH: 'badge-ch', OTHER: 'badge-other' };
+  const flags = { DE: '🇩🇪 DE', AT: '🇦🇹 AT', CH: '🇨🇭 CH', OTHER: '🌍 Sonstige' };
   el.innerHTML = '<table><thead><tr><th>Produkt</th><th>Land</th><th>Menge</th><th>Supplier Preis</th><th>Variant ID</th></tr></thead><tbody>' +
-    products.map(p => `<tr><td>${p.name}</td><td><span class="badge ${badgeClass[p.land]||'badge-other'}">${landFlags[p.land]||p.land}</span></td><td>${p.qty}x</td><td><strong>${p.cost.toFixed(2)} €</strong></td><td style="color:#666;font-size:0.75rem">${p.variantId||'–'}</td></tr>`).join('') +
+    products.map(p => `<tr><td>${p.name}</td><td><span class="badge ${badgeClass[p.land]||'badge-other'}">${flags[p.land]||p.land}</span></td><td>${p.qty}x</td><td><strong>${p.cost.toFixed(2)} €</strong></td><td style="color:#666;font-size:0.75rem">${p.variantId||'–'}</td></tr>`).join('') +
     '</tbody></table>';
 }
 
@@ -373,39 +600,13 @@ function getUstRate(countryCode) {
   return parseFloat(config['cfg-ust-de'] || 19) / 100;
 }
 
-async function loadDashboard() {
-  const from = document.getElementById('date-from').value;
-  const to = document.getElementById('date-to').value;
-  if (!from || !to) { alert('Bitte Zeitraum auswählen.'); return; }
-  const spinner = document.getElementById('loading-spinner');
-  spinner.style.display = 'inline-block';
-  try {
-    const [shopifyData, tiktokData] = await Promise.all([fetchShopifyOrders(from, to), fetchTikTokAdSpend(from, to)]);
-    const metaSpend = getMetaCostsForRange(from, to);
-    renderDashboard(shopifyData, tiktokData, metaSpend);
-  } catch(e) { alert('Fehler: ' + e.message); }
-  finally { spinner.style.display = 'none'; }
-}
-
 async function fetchShopifyOrders(from, to) {
   const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
   if (!domain || !token) return { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {} };
-
-  const params = new URLSearchParams({
-    shop: domain,
-    token: token,
-    path: 'orders.json',
-    status: 'any',
-    created_at_min: from + 'T00:00:00+01:00',
-    created_at_max: to + 'T23:59:59+01:00',
-    limit: '250',
-    financial_status: 'paid'
-  });
-
-  const resp = await fetch(`${PROXY}?${params.toString()}`);
+  const params = new URLSearchParams({ shop: domain, token, path: 'orders.json', status: 'any', created_at_min: from + 'T00:00:00+01:00', created_at_max: to + 'T23:59:59+01:00', limit: '250', financial_status: 'paid' });
+  const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify API Fehler: ' + resp.status);
   const data = await resp.json();
-
   const shopifyFeeRate = parseFloat(config['cfg-shopify-fee'] || 2) / 100;
   const stripeFeeRate = parseFloat(config['cfg-stripe-fee'] || 1.5) / 100;
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
@@ -417,17 +618,12 @@ async function fetchShopifyOrders(from, to) {
     const orderUst = totalPrice * (ustRate / (1 + ustRate));
     const orderFees = totalPrice * (shopifyFeeRate + stripeFeeRate);
     let orderCogs = 0;
-    (order.line_items || []).forEach(item => {
-      orderCogs += getCostForItem(country, item.quantity, item.variant_id) * item.quantity;
-    });
+    (order.line_items || []).forEach(item => { orderCogs += getCostForItem(country, item.quantity, item.variant_id) * item.quantity; });
     if (orderCogs === 0 && products.length > 0) orderCogs = getCostForItem(country, 1, null);
     revenue += totalPrice; cogs += orderCogs; fees += orderFees; ust += orderUst;
     if (!byCountry[country]) byCountry[country] = { revenue: 0, cogs: 0, fees: 0, ust: 0, orders: 0 };
-    byCountry[country].revenue += totalPrice;
-    byCountry[country].cogs += orderCogs;
-    byCountry[country].fees += orderFees;
-    byCountry[country].ust += orderUst;
-    byCountry[country].orders++;
+    byCountry[country].revenue += totalPrice; byCountry[country].cogs += orderCogs;
+    byCountry[country].fees += orderFees; byCountry[country].ust += orderUst; byCountry[country].orders++;
     return { id: order.name, date: order.created_at.split('T')[0], total: totalPrice, country, cogs: orderCogs, ust: orderUst, fees: orderFees };
   });
   return { orders, revenue, cogs, fees, ust, byCountry };
@@ -452,7 +648,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
   const margin = shopify.revenue > 0 ? (netProfit / shopify.revenue * 100) : 0;
   const roas = totalAdSpend > 0 ? (shopify.revenue / totalAdSpend) : 0;
   const f = v => v.toFixed(2) + ' €';
-
   document.getElementById('c-revenue').textContent = f(shopify.revenue);
   document.getElementById('c-orders-count').textContent = shopify.orders.length + ' Bestellungen';
   document.getElementById('c-cogs').textContent = '– ' + f(shopify.cogs);
@@ -466,23 +661,17 @@ function renderDashboard(shopify, tiktok, metaSpend) {
   profitEl.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
   document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
   document.getElementById('c-margin').textContent = 'Marge: ' + margin.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
-
-  const countryInfo = {
-    DE: { flag: '🇩🇪', name: 'Deutschland', badge: 'badge-de' },
-    AT: { flag: '🇦🇹', name: 'Österreich', badge: 'badge-at' },
-    CH: { flag: '🇨🇭', name: 'Schweiz', badge: 'badge-ch' }
-  };
+  const countryInfo = { DE: { flag: '🇩🇪', name: 'Deutschland' }, AT: { flag: '🇦🇹', name: 'Österreich' }, CH: { flag: '🇨🇭', name: 'Schweiz' } };
   const cbEl = document.getElementById('country-breakdown');
   const countries = Object.entries(shopify.byCountry).sort((a,b) => b[1].revenue - a[1].revenue);
   if (!countries.length) {
     cbEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Keine Bestellungen im gewählten Zeitraum</div>';
   } else {
     cbEl.innerHTML = countries.map(([code, d]) => {
-      const info = countryInfo[code] || { flag: '🌍', name: code, badge: 'badge-other' };
+      const info = countryInfo[code] || { flag: '🌍', name: code };
       const profit = d.revenue - d.cogs - d.fees - d.ust;
       const ustLabel = code === 'AT' ? '20%' : code === 'CH' ? '8.1%' : '19%';
-      return `<div class="country-card">
-        <h4><span class="flag">${info.flag}</span>${info.name} <span style="font-size:0.7rem;color:#666;font-weight:400">(${d.orders} Bestellungen · USt ${ustLabel})</span></h4>
+      return `<div class="country-card"><h4><span class="flag">${info.flag}</span>${info.name} <span style="font-size:0.7rem;color:#666;font-weight:400">(${d.orders} Bestellungen · USt ${ustLabel})</span></h4>
         <div class="row"><span>Umsatz</span><span>${f(d.revenue)}</span></div>
         <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f(d.cogs)}</span></div>
         <div class="row"><span>Gebühren</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
@@ -491,7 +680,6 @@ function renderDashboard(shopify, tiktok, metaSpend) {
       </div>`;
     }).join('');
   }
-
   document.getElementById('pnl-table').innerHTML = `
     <div class="summary-row"><span>Brutto-Umsatz</span><span>${f(shopify.revenue)}</span></div>
     <div class="summary-row"><span style="color:#e17055">– Produktkosten</span><span style="color:#e17055">– ${f(shopify.cogs)}</span></div>
@@ -499,9 +687,7 @@ function renderDashboard(shopify, tiktok, metaSpend) {
     <div class="summary-row"><span style="color:#e17055">– Meta Ads (manuell)</span><span style="color:#e17055">– ${f(metaSpend)}</span></div>
     <div class="summary-row"><span style="color:#e17055">– Shopify & Stripe</span><span style="color:#e17055">– ${f(shopify.fees)}</span></div>
     <div class="summary-row"><span style="color:#fdcb6e">– USt</span><span style="color:#fdcb6e">– ${f(shopify.ust)}</span></div>
-    <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a"><span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'};font-size:1.05rem">${f(netProfit)}</span></div>
-  `;
-
+    <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a"><span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'};font-size:1.05rem">${f(netProfit)}</span></div>`;
   const adPct = shopify.revenue > 0 ? (totalAdSpend / shopify.revenue * 100) : 0;
   document.getElementById('ads-breakdown').innerHTML = `
     <div class="summary-row"><span>TikTok Ads</span><span style="color:#e17055">${f(tiktok.spend)}</span></div>
@@ -509,31 +695,21 @@ function renderDashboard(shopify, tiktok, metaSpend) {
     <div class="summary-row" style="border-top:2px solid #2a2a3a;margin-top:8px;padding-top:12px"><span>Gesamt Werbekosten</span><span style="color:#e17055;font-size:1.05rem">${f(totalAdSpend)}</span></div>
     <div class="summary-row"><span>Anteil am Umsatz</span><span style="color:#fdcb6e">${adPct.toFixed(1)}%</span></div>
     <div class="summary-row"><span>ROAS</span><span style="color:#00b894;font-size:1.05rem">${roas.toFixed(2)}x</span></div>
-    <div class="summary-row"><span>Kosten pro Bestellung</span><span>${shopify.orders.length > 0 ? f(totalAdSpend / shopify.orders.length) : '–'}</span></div>
-  `;
-
+    <div class="summary-row"><span>Kosten pro Bestellung</span><span>${shopify.orders.length > 0 ? f(totalAdSpend / shopify.orders.length) : '–'}</span></div>`;
   if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
   const badgeClass = { DE: 'badge-de', AT: 'badge-at', CH: 'badge-ch' };
   document.getElementById('orders-table').innerHTML = '<table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Gebühren</th><th>USt</th><th>Profit</th></tr></thead><tbody>' +
     shopify.orders.map(o => {
       const p = o.total - o.cogs - o.fees - o.ust;
       const flag = o.country === 'DE' ? '🇩🇪' : o.country === 'AT' ? '🇦🇹' : o.country === 'CH' ? '🇨🇭' : '🌍';
-      return `<tr>
-        <td><strong>${o.id}</strong></td>
-        <td style="color:#888">${o.date}</td>
-        <td><span class="badge ${badgeClass[o.country]||'badge-other'}">${flag} ${o.country}</span></td>
-        <td>${f(o.total)}</td>
-        <td style="color:#e17055">– ${f(o.cogs)}</td>
-        <td style="color:#e17055">– ${f(o.fees)}</td>
-        <td style="color:#fdcb6e">– ${f(o.ust)}</td>
-        <td style="color:${p>=0?'#00b894':'#e17055'};font-weight:700">${f(p)}</td>
-      </tr>`;
+      return `<tr><td><strong>${o.id}</strong></td><td style="color:#888">${o.date}</td><td><span class="badge ${badgeClass[o.country]||'badge-other'}">${flag} ${o.country}</span></td><td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td><td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">– ${f(o.ust)}</td><td style="color:${p>=0?'#00b894':'#e17055'};font-weight:700">${f(p)}</td></tr>`;
     }).join('') + '</tbody></table>';
 }
 
 window.onload = () => {
-  loadState(); setToday();
+  loadState();
   document.getElementById('meta-date').value = new Date().toISOString().split('T')[0];
+  quickFilter('today', document.getElementById('qbtn-today'));
 };
 </script>
 </body>
