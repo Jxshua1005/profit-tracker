@@ -157,7 +157,6 @@
 
   <!-- WERBEKOSTEN -->
   <div class="section" id="tab-adkosten">
-    <!-- Quelle Status -->
     <div class="panel">
       <h3>📡 Datenquellen Status</h3>
       <div id="source-status-cards">
@@ -181,8 +180,6 @@
         </div>
       </div>
     </div>
-
-    <!-- META manuell -->
     <div class="panel">
       <h3>📘 Meta Werbekosten – tägliche Eingabe</h3>
       <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine Meta/Facebook Ausgaben ein. Sobald du den API Token in den Einstellungen hinterlegst, wird das automatisch geladen und diese Einträge werden ignoriert.</p>
@@ -197,8 +194,6 @@
       <h3>Eingetragene Meta Kosten</h3>
       <div id="meta-history"><div class="empty-state">Noch keine Einträge</div></div>
     </div>
-
-    <!-- TIKTOK manuell -->
     <div class="panel">
       <h3>🎵 TikTok Werbekosten – tägliche Eingabe</h3>
       <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine TikTok Ausgaben ein. Sobald die TikTok App genehmigt ist und du den Token einträgst, wird das automatisch geladen.</p>
@@ -242,8 +237,6 @@
 
   <!-- EINSTELLUNGEN -->
   <div class="section" id="tab-einstellungen">
-
-    <!-- SHOPIFY -->
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">🛍️ Shopify API</h3>
@@ -254,8 +247,6 @@
         <div class="form-group"><label>Access Token</label><input type="password" id="cfg-shopify-token" placeholder="shpat_..." /></div>
       </div>
     </div>
-
-    <!-- META API -->
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">📘 Meta Ads API</h3>
@@ -274,21 +265,17 @@
         <div class="form-group"><label>Ad Account ID</label><input type="text" id="cfg-meta-account" placeholder="act_XXXXXXXXX" /></div>
       </div>
     </div>
-
-    <!-- TIKTOK API -->
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">🎵 TikTok Ads API</h3>
         <span class="source-badge source-inactive" id="tiktok-cfg-badge">⏳ Pending – manuell aktiv</span>
       </div>
-      <p style="font-size:0.78rem;color:#666;margin-bottom:14px;">Sobald deine TikTok Developer App genehmigt ist, Token und Advertiser ID eintragen – ab dann automatisch.</p>
+      <p style="font-size:0.78rem;color:#666;margin-bottom:14px;">Token und Advertiser ID eintragen – ab dann automatisch.</p>
       <div class="form-grid">
         <div class="form-group"><label>Access Token</label><input type="password" id="cfg-tiktok-token" placeholder="TikTok Access Token" /></div>
         <div class="form-group"><label>Advertiser ID</label><input type="text" id="cfg-tiktok-advertiser" placeholder="7xxxxxxxxxxxxxxxxx" /></div>
       </div>
     </div>
-
-    <!-- STEUERN & GEBÜHREN -->
     <div class="panel">
       <h3>🧾 Steuersätze</h3>
       <div class="fee-info">
@@ -303,7 +290,6 @@
         <div class="form-group"><label>🇨🇭 USt Schweiz (%)</label><input type="number" id="cfg-ust-ch" value="8.1" /></div>
       </div>
     </div>
-
     <button class="btn btn-success" onclick="saveConfig()">💾 Einstellungen speichern</button>
     <span id="save-msg" style="font-size:0.82rem;color:#00b894;margin-left:12px;display:none;">✓ Gespeichert!</span>
   </div>
@@ -330,12 +316,10 @@
 const PROXY = 'https://shopify-proxy.joshuaschulte-business.workers.dev';
 let config = {}, products = [], metaCosts = {}, tiktokCosts = {}, bundles = [], shopifyProductCache = [];
 
-// ─── Shopify Payments Gebühren (Standard Plan, fest) ──────
 function getPaymentFee(country, total) {
   return (total * (country === 'CH' ? 0.042 : 0.027)) + 0.30;
 }
 
-// ─── State ────────────────────────────────────────────────
 function loadState() {
   try { config = JSON.parse(localStorage.getItem('femorea_config') || '{}'); } catch(e) {}
   try { products = JSON.parse(localStorage.getItem('femorea_products') || '[]'); } catch(e) {}
@@ -369,18 +353,12 @@ function updateApiStatus() {
   const hasMetaApi = !!(config['cfg-meta-token'] && config['cfg-meta-account']);
   const hasMetaManual = Object.keys(metaCosts).length > 0;
   const hasTiktokManual = Object.keys(tiktokCosts).length > 0;
-
-  // Header dots
   document.getElementById('dot-shopify').className = 'dot ' + (hasShopify ? 'dot-green' : 'dot-red');
   document.getElementById('dot-tiktok').className = 'dot ' + (hasTiktokApi ? 'dot-green' : hasTiktokManual ? 'dot-yellow' : 'dot-red');
   document.getElementById('dot-meta').className = 'dot ' + (hasMetaApi ? 'dot-green' : hasMetaManual ? 'dot-yellow' : 'dot-red');
-
-  // Einstellungen badges
   setSrcBadge('shopify-cfg-badge', hasShopify ? 'api' : 'inactive', hasShopify ? '✅ Verbunden' : 'Nicht verbunden');
   setSrcBadge('meta-cfg-badge', hasMetaApi ? 'api' : 'inactive', hasMetaApi ? '✅ API aktiv' : '⏳ Noch nicht verbunden – manuell aktiv');
   setSrcBadge('tiktok-cfg-badge', hasTiktokApi ? 'api' : 'inactive', hasTiktokApi ? '✅ API aktiv' : '⏳ Pending – manuell aktiv');
-
-  // Werbekosten Tab source badges
   setSrcBadge('meta-source-badge', hasMetaApi ? 'api' : hasMetaManual ? 'manual' : 'inactive', hasMetaApi ? '🟢 API automatisch' : hasMetaManual ? '🟡 Manuell' : '⏳ Keine Daten');
   setSrcBadge('tiktok-source-badge', hasTiktokApi ? 'api' : hasTiktokManual ? 'manual' : 'inactive', hasTiktokApi ? '🟢 API automatisch' : hasTiktokManual ? '🟡 Manuell' : '⏳ Keine Daten');
 }
@@ -399,7 +377,6 @@ function showTab(name, btn) {
   btn.classList.add('active');
 }
 
-// ─── Quick Filter ─────────────────────────────────────────
 function fmt(d) { return d.toISOString().split('T')[0]; }
 
 function setQuickBtn(id) {
@@ -425,7 +402,6 @@ function onDateChange() {
   document.getElementById('btn-load').classList.add('visible');
 }
 
-// ─── Dashboard laden ──────────────────────────────────────
 async function loadDashboard() {
   const from = document.getElementById('date-from').value;
   const to = document.getElementById('date-to').value;
@@ -445,7 +421,6 @@ async function loadDashboard() {
   finally { spinner.style.display = 'none'; }
 }
 
-// ─── Werbekosten manuell ──────────────────────────────────
 function saveAdCost(platform) {
   const date = document.getElementById(platform+'-date').value;
   const amount = parseFloat(document.getElementById(platform+'-amount').value);
@@ -513,33 +488,44 @@ async function fetchShopifyOrders(from, to) {
   return { orders, revenue, cogs, fees, ust, byCountry };
 }
 
-async function fetchMetaAdSpend(from, to) {
-  const token = config['cfg-meta-token'], accountId = config['cfg-meta-account'];
-  if (!token || !accountId) return { spend: 0 };
-  try {
-    const url = `https://graph.facebook.com/v19.0/${accountId}/insights?fields=spend&time_range={"since":"${from}","until":"${to}"}&level=account&access_token=${token}`;
-    const resp = await fetch(url);
-    if (!resp.ok) return { spend: 0 };
-    const data = await resp.json();
-    const spend = (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0);
-    return { spend };
-  } catch(e) { return { spend: 0 }; }
-}
-
+// ── TikTok via Cloudflare Worker Proxy ───────────────────
 async function fetchTikTokAdSpend(from, to) {
-  const token = config['cfg-tiktok-token'], advertiserId = config['cfg-tiktok-advertiser'];
+  const token = config['cfg-tiktok-token'];
+  const advertiserId = config['cfg-tiktok-advertiser'];
   if (!token || !advertiserId) return { spend: 0 };
   try {
-    const url = `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?advertiser_id=${advertiserId}&report_type=BASIC&dimensions=["stat_time_day"]&metrics=["spend"]&start_date=${from}&end_date=${to}&page_size=100`;
-    const resp = await fetch(url, { headers: { 'Access-Token': token } });
+    const params = new URLSearchParams({
+      tiktok: '1', tiktok_token: token,
+      advertiser_id: advertiserId, start_date: from, end_date: to
+    });
+    const resp = await fetch(`${PROXY}?${params}`);
     if (!resp.ok) return { spend: 0 };
     const data = await resp.json();
-    const spend = (data.data?.list || []).reduce((sum, row) => sum + parseFloat(row.metrics?.spend || 0), 0);
+    const spend = (data.data?.list || []).reduce((sum, row) =>
+      sum + parseFloat(row.metrics?.spend || 0), 0);
     return { spend };
   } catch(e) { return { spend: 0 }; }
 }
 
-// ─── Hilfs-Funktionen ─────────────────────────────────────
+// ── Meta via Cloudflare Worker Proxy ─────────────────────
+async function fetchMetaAdSpend(from, to) {
+  const token = config['cfg-meta-token'];
+  const accountId = config['cfg-meta-account'];
+  if (!token || !accountId) return { spend: 0 };
+  try {
+    const params = new URLSearchParams({
+      meta: '1', meta_token: token,
+      account_id: accountId, start_date: from, end_date: to
+    });
+    const resp = await fetch(`${PROXY}?${params}`);
+    if (!resp.ok) return { spend: 0 };
+    const data = await resp.json();
+    const spend = (data.data || []).reduce((sum, row) =>
+      sum + parseFloat(row.spend || 0), 0);
+    return { spend };
+  } catch(e) { return { spend: 0 }; }
+}
+
 function getUstRate(country) {
   if (country === 'AT') return parseFloat(config['cfg-ust-at'] || 20) / 100;
   if (country === 'CH') return parseFloat(config['cfg-ust-ch'] || 8.1) / 100;
@@ -558,14 +544,12 @@ function getCostForItem(countryCode, qty, variantId) {
   return fallback ? fallback.cost : 0;
 }
 
-// ─── Dashboard rendern ────────────────────────────────────
 function renderDashboard(shopify, tiktokSpend, metaSpend) {
   const totalAds = tiktokSpend + metaSpend;
   const netProfit = shopify.revenue - shopify.cogs - totalAds - shopify.fees - shopify.ust;
   const margin = shopify.revenue > 0 ? (netProfit / shopify.revenue * 100) : 0;
   const roas = totalAds > 0 ? (shopify.revenue / totalAds) : 0;
   const f = v => v.toFixed(2) + ' €';
-
   document.getElementById('c-revenue').textContent = f(shopify.revenue);
   document.getElementById('c-orders-count').textContent = shopify.orders.length + ' Bestellungen';
   document.getElementById('c-cogs').textContent = '– ' + f(shopify.cogs);
@@ -578,8 +562,6 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   pe.textContent = f(netProfit); pe.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
   document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
   document.getElementById('c-margin').textContent = 'Marge: ' + margin.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
-
-  // Länder
   const ci = { DE:{flag:'🇩🇪',name:'Deutschland'}, AT:{flag:'🇦🇹',name:'Österreich'}, CH:{flag:'🇨🇭',name:'Schweiz'} };
   const cbEl = document.getElementById('country-breakdown');
   const countries = Object.entries(shopify.byCountry).sort((a,b) => b[1].revenue-a[1].revenue);
@@ -598,8 +580,6 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
         </div>
       </div>`;
     }).join('');
-
-  // P&L
   document.getElementById('pnl-table').innerHTML = `
     <div class="summary-row"><span>Brutto-Umsatz</span><span>${f(shopify.revenue)}</span></div>
     <div class="summary-row"><span style="color:#e17055">– Produktkosten</span><span style="color:#e17055">– ${f(shopify.cogs)}</span></div>
@@ -610,8 +590,6 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a;font-weight:700;font-size:0.95rem">
       <span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'}">${f(netProfit)}</span>
     </div>`;
-
-  // Ads breakdown
   const adPct = shopify.revenue > 0 ? (totalAds/shopify.revenue*100) : 0;
   const cpo = shopify.orders.length > 0 ? totalAds/shopify.orders.length : 0;
   document.getElementById('ads-breakdown').innerHTML = `
@@ -623,8 +601,6 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     <div class="summary-row"><span>Anteil am Umsatz</span><span style="color:#fdcb6e">${adPct.toFixed(1)}%</span></div>
     <div class="summary-row"><span>ROAS</span><span style="color:#00b894;font-size:1.05rem">${roas.toFixed(2)}x</span></div>
     <div class="summary-row"><span>Kosten pro Bestellung</span><span>${cpo > 0 ? f(cpo) : '–'}</span></div>`;
-
-  // Bestellungstabelle
   if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
   const bc = { DE:'badge-de', AT:'badge-at', CH:'badge-ch' };
   const fl = { DE:'🇩🇪', AT:'🇦🇹', CH:'🇨🇭' };
@@ -641,7 +617,6 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     }).join('') + '</tbody></table></div>';
 }
 
-// ─── Shopify Produkte ─────────────────────────────────────
 async function loadShopifyProducts() {
   const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
   if (!domain || !token) { alert('Bitte Shopify Domain und Token in den Einstellungen speichern.'); return; }
@@ -750,7 +725,6 @@ function renderSavedProducts() {
     '</tbody></table>';
 }
 
-// ─── Bundles ──────────────────────────────────────────────
 function openBundleCreator() {
   const all = [...shopifyProductCache.map(i => ({id:i.variantId,label:i.title+(i.variantTitle?' – '+i.variantTitle:'')})),
     ...products.filter(p => !shopifyProductCache.find(s => s.variantId===p.variantId)).map(p => ({id:p.variantId||p.name,label:p.name}))];
@@ -788,7 +762,6 @@ function renderBundleList() {
   </div>`).join('');
 }
 
-// ─── Init ─────────────────────────────────────────────────
 window.onload = () => {
   loadState();
   const today = new Date().toISOString().split('T')[0];
