@@ -354,6 +354,7 @@
       </p>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary btn-sm" onclick="loadShopifyProducts()">🔄 Produkte laden <span id="shopify-load-spinner" style="display:none" class="loading"></span></button>
+        <button class="btn btn-sm" id="btn-product-select" style="background:#18181f;border:1px solid #6c5ce7;color:#a29bfe;display:none;" onclick="openProductSelectModal()">☑ Auswahl ändern</button>
         <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="addManualProductRow()">+ Manuell hinzufügen</button>
         <span id="shopify-load-msg" style="font-size:0.78rem;color:#00b894;display:none;"></span>
       </div>
@@ -513,6 +514,8 @@ function loadState() {
       ? shopifyProductCache.filter(p => selectedProductIds.has(String(p.productId)))
       : shopifyProductCache;
     renderShopifyProductList(toShow);
+    const btnSel = document.getElementById('btn-product-select');
+    if (btnSel) btnSel.style.display = 'inline-block';
   }
 }
 
@@ -821,7 +824,9 @@ async function loadShopifyProducts() {
       p.variants.map(v => ({ productId: p.id, variantId: String(v.id), title: p.title, variantTitle: v.title === 'Default Title' ? '' : v.title, price: parseFloat(v.price) || 0 }))
     );
     localStorage.setItem('femorea_shopify_products', JSON.stringify(shopifyProductCache));
-    msg.style.display = 'inline'; msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen – jetzt auswählen';
+    msg.style.display = 'inline'; msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen';
+    const btnSel2 = document.getElementById('btn-product-select');
+    if (btnSel2) btnSel2.style.display = 'inline-block';
     openProductSelectModal();
   } catch(e) { alert('Fehler: ' + e.message); }
   finally { spinner.style.display = 'none'; }
@@ -893,7 +898,9 @@ function confirmProductSelection() {
   renderShopifyProductList(selected);
   const msg = document.getElementById('shopify-load-msg');
   msg.style.display = 'inline';
-  msg.textContent = '✓ ' + selectedProductIds.size + ' Produkte übernommen';
+  msg.textContent = '✓ ' + selectedProductIds.size + ' Produkte ausgewählt';
+  const btnSel = document.getElementById('btn-product-select');
+  if (btnSel) btnSel.style.display = 'inline-block';
 }
 
 // Produkte nach productId gruppieren
