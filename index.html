@@ -221,6 +221,26 @@
     .source-api { background: #00b89422; color: #00b894; }
     .source-manual { background: #fdcb6e22; color: #fdcb6e; }
     .source-inactive { background: #2a2a3a; color: #666; }
+
+    /* Produkt-Auswahl Modal */
+    .product-select-modal { display:none; position:fixed; inset:0; background:#000b; z-index:200; align-items:center; justify-content:center; }
+    .product-select-modal.open { display:flex; }
+    .product-select-inner { background:#18181f; border:1px solid #2a2a3a; border-radius:14px; padding:28px; width:90%; max-width:700px; max-height:85vh; display:flex; flex-direction:column; gap:14px; }
+    .product-select-inner h3 { font-size:1rem; color:#fff; margin:0; }
+    .product-select-search { background:#0f0f13; border:1px solid #2a2a3a; border-radius:8px; padding:9px 12px; color:#fff; font-size:0.88rem; outline:none; width:100%; }
+    .product-select-search:focus { border-color:#6c5ce7; }
+    .product-select-list { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:4px; }
+    .psi-group { background:#0f0f13; border:1px solid #2a2a3a; border-radius:8px; overflow:hidden; }
+    .psi-group-header { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; transition:background 0.15s; }
+    .psi-group-header:hover { background:#13131a; }
+    .psi-group-header input[type=checkbox] { accent-color:#6c5ce7; width:16px; height:16px; flex-shrink:0; cursor:pointer; }
+    .psi-group-name { font-size:0.85rem; font-weight:700; color:#fff; }
+    .psi-group-count { font-size:0.72rem; color:#555; margin-left:auto; }
+    .product-select-actions { display:flex; gap:8px; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+    .product-select-count { font-size:0.8rem; color:#888; }
+    .psi-select-all { font-size:0.78rem; color:#6c5ce7; background:none; border:none; cursor:pointer; padding:0; }
+    .psi-select-all:hover { color:#a29bfe; }
+
   </style>
 </head>
 <body>
@@ -262,7 +282,7 @@
       <div class="card"><div class="label">Produktkosten</div><div class="value red" id="c-cogs">–</div><div class="sub">Supplier Endpreise</div></div>
       <div class="card"><div class="label">Werbekosten</div><div class="value red" id="c-adspend">–</div><div class="sub"><span id="c-tiktok-sub">TikTok: –</span> | <span id="c-meta-sub">Meta: –</span></div></div>
       <div class="card"><div class="label">Shopify Payments</div><div class="value red" id="c-fees">–</div><div class="sub">inkl. 0,30€ fix + Währung CH</div></div>
-      <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub">DE 19% | AT 20% | CH 8.1%</div></div>
+      <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub" id="ust-rates-sub">DE 19% | AT 20% | CH 8.1%</div></div>
       <div class="card"><div class="label">Netto-Profit</div><div class="value green" id="c-profit">–</div>
         <div class="profit-bar"><div class="profit-bar-fill" id="profit-bar" style="width:0%"></div></div>
         <div class="sub" id="c-margin">Marge: – | ROAS: –</div>
@@ -412,6 +432,26 @@
   </div>
 </div>
 
+
+<!-- Produkt-Auswahl Modal -->
+<div class="product-select-modal" id="product-select-modal">
+  <div class="product-select-inner">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h3>📦 Produkte auswählen</h3>
+      <button class="psi-select-all" onclick="selectAllProducts(true)">Alle auswählen</button>
+    </div>
+    <input type="text" class="product-select-search" id="product-select-search" placeholder="Produkt suchen..." oninput="filterProductSelect()" />
+    <div class="product-select-list" id="product-select-list"></div>
+    <div class="product-select-actions">
+      <span class="product-select-count" id="product-select-count">0 Produkte ausgewählt</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" style="background:#2a2a3a;color:#888;" onclick="closeProductSelectModal()">Abbrechen</button>
+        <button class="btn btn-success btn-sm" onclick="confirmProductSelection()">✓ Übernehmen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Bundle Modal -->
 <div id="bundle-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center;">
   <div style="background:#18181f;border:1px solid #2a2a3a;border-radius:14px;padding:28px;width:90%;max-width:520px;">
@@ -432,6 +472,7 @@
 <script>
 const PROXY = 'https://shopify-proxy.joshuaschulte-business.workers.dev';
 let config = {}, products = [], metaCosts = {}, tiktokCosts = {}, bundles = [], shopifyProductCache = [], selectedVariantIds = [];
+let selectedProductIds = new Set();
 
 // ── Produktpreise Datenstruktur:
 // productPrices[productId] = {
@@ -458,6 +499,7 @@ function loadState() {
   try { tiktokCosts = JSON.parse(localStorage.getItem('femorea_tiktok') || '{}'); } catch(e) {}
   try { bundles = JSON.parse(localStorage.getItem('femorea_bundles') || '[]'); } catch(e) {}
   try { shopifyProductCache = JSON.parse(localStorage.getItem('femorea_shopify_products') || '[]'); } catch(e) {}
+  try { const sp = JSON.parse(localStorage.getItem('femorea_selected_products') || '[]'); selectedProductIds = new Set(sp); } catch(e) {}
   try { productPrices = JSON.parse(localStorage.getItem('femorea_product_prices') || '{}'); } catch(e) {}
 
   ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at','cfg-ust-ch'].forEach(id => {
@@ -466,7 +508,12 @@ function loadState() {
   });
   renderSavedProducts(); renderAdHistory('meta'); renderAdHistory('tiktok');
   updateApiStatus(); renderBundleList();
-  if (shopifyProductCache.length) renderShopifyProductList(shopifyProductCache);
+  if (shopifyProductCache.length) {
+    const toShow = selectedProductIds.size > 0
+      ? shopifyProductCache.filter(p => selectedProductIds.has(String(p.productId)))
+      : shopifyProductCache;
+    renderShopifyProductList(toShow);
+  }
 }
 
 function saveConfig() {
@@ -695,6 +742,8 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   document.getElementById('c-meta-sub').textContent = 'Meta: ' + f(metaSpend);
   document.getElementById('c-fees').textContent = '– ' + f(shopify.fees);
   document.getElementById('c-ust').textContent = f(shopify.ust);
+  const sub = document.getElementById('ust-rates-sub');
+  if (sub) sub.textContent = `DE ${config['cfg-ust-de']||19}% | AT ${config['cfg-ust-at']||20}% | CH ${config['cfg-ust-ch']||8.1}%`;
   const pe = document.getElementById('c-profit');
   pe.textContent = f(netProfit); pe.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
   document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
@@ -711,7 +760,7 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
         <div class="row"><span>Umsatz</span><span>${f(d.revenue)}</span></div>
         <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f(d.cogs)}</span></div>
         <div class="row"><span>Payments (${code==='CH'?'4.2%':'2.7%'} + 0,30€)</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
-        <div class="row"><span>USt (${code==='AT'?'20%':code==='CH'?'8.1%':'19%'})</span><span style="color:#fdcb6e">– ${f(d.ust)}</span></div>
+        <div class="row"><span>USt (${code==='AT'?(config['cfg-ust-at']||20)+'%':code==='CH'?(config['cfg-ust-ch']||8.1)+'%':(config['cfg-ust-de']||19)+'%'})</span><span style="color:#fdcb6e">– ${f(d.ust)}</span></div>
         <div class="row" style="border-top:1px solid #2a2a3a;margin-top:6px;padding-top:6px;font-weight:700">
           <span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span>
         </div>
@@ -772,10 +821,79 @@ async function loadShopifyProducts() {
       p.variants.map(v => ({ productId: p.id, variantId: String(v.id), title: p.title, variantTitle: v.title === 'Default Title' ? '' : v.title, price: parseFloat(v.price) || 0 }))
     );
     localStorage.setItem('femorea_shopify_products', JSON.stringify(shopifyProductCache));
-    renderShopifyProductList(shopifyProductCache);
-    msg.style.display = 'inline'; msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen';
+    msg.style.display = 'inline'; msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen – jetzt auswählen';
+    openProductSelectModal();
   } catch(e) { alert('Fehler: ' + e.message); }
   finally { spinner.style.display = 'none'; }
+}
+
+// ── Produkt-Auswahl Modal ─────────────────────────────────
+let _allProductGroups = [];
+
+function openProductSelectModal() {
+  _allProductGroups = groupByProduct(shopifyProductCache);
+  renderProductSelectList(_allProductGroups);
+  document.getElementById('product-select-search').value = '';
+  document.getElementById('product-select-modal').classList.add('open');
+  updateProductSelectCount();
+}
+
+function closeProductSelectModal() {
+  document.getElementById('product-select-modal').classList.remove('open');
+}
+
+function renderProductSelectList(groups) {
+  const list = document.getElementById('product-select-list');
+  list.innerHTML = groups.map(g => {
+    const checked = selectedProductIds.has(String(g.productId));
+    return `<div class="psi-group" id="psigroup-${g.productId}">
+      <div class="psi-group-header" onclick="toggleProductSelect('${g.productId}')">
+        <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleProductSelect('${g.productId}')" id="psichk-${g.productId}" />
+        <span class="psi-group-name">${g.title}</span>
+        <span class="psi-group-count">${g.variants.length} Variante${g.variants.length!==1?'n':''}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-state">Keine Produkte gefunden</div>';
+  updateProductSelectCount();
+}
+
+function toggleProductSelect(pid) {
+  pid = String(pid);
+  if (selectedProductIds.has(pid)) selectedProductIds.delete(pid);
+  else selectedProductIds.add(pid);
+  const chk = document.getElementById('psichk-' + pid);
+  if (chk) chk.checked = selectedProductIds.has(pid);
+  updateProductSelectCount();
+}
+
+function selectAllProducts(val) {
+  _allProductGroups.forEach(g => {
+    if (val) selectedProductIds.add(String(g.productId));
+    else selectedProductIds.delete(String(g.productId));
+    const chk = document.getElementById('psichk-' + g.productId);
+    if (chk) chk.checked = val;
+  });
+  updateProductSelectCount();
+}
+
+function updateProductSelectCount() {
+  document.getElementById('product-select-count').textContent = selectedProductIds.size + ' Produkt' + (selectedProductIds.size!==1?'e':'') + ' ausgewählt';
+}
+
+function filterProductSelect() {
+  const q = document.getElementById('product-select-search').value.toLowerCase();
+  const filtered = _allProductGroups.filter(g => g.title.toLowerCase().includes(q));
+  renderProductSelectList(filtered);
+}
+
+function confirmProductSelection() {
+  localStorage.setItem('femorea_selected_products', JSON.stringify([...selectedProductIds]));
+  const selected = shopifyProductCache.filter(p => selectedProductIds.has(String(p.productId)));
+  closeProductSelectModal();
+  renderShopifyProductList(selected);
+  const msg = document.getElementById('shopify-load-msg');
+  msg.style.display = 'inline';
+  msg.textContent = '✓ ' + selectedProductIds.size + ' Produkte übernommen';
 }
 
 // Produkte nach productId gruppieren
