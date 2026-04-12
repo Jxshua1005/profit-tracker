@@ -77,8 +77,8 @@
     .flag { font-size: 1.1rem; margin-right: 6px; }
     .pnl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     @media (max-width: 700px) { .pnl-grid { grid-template-columns: 1fr; } }
-    .shopify-product-item { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
-    .prod-name { font-size: 0.85rem; font-weight: 600; color: #fff; }
+    .shopify-product-item { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .prod-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
     .prod-variant { font-size: 0.72rem; color: #555; margin-top: 2px; }
     .bundle-section { margin-top: 18px; border-top: 1px solid #2a2a3a; padding-top: 16px; }
     .bundle-row { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
@@ -135,7 +135,7 @@
       <div class="card"><div class="label">Umsatz Gesamt</div><div class="value" id="c-revenue">–</div><div class="sub" id="c-orders-count">– Bestellungen</div></div>
       <div class="card"><div class="label">Produktkosten</div><div class="value red" id="c-cogs">–</div><div class="sub">Supplier Endpreise</div></div>
       <div class="card"><div class="label">Werbekosten</div><div class="value red" id="c-adspend">–</div><div class="sub"><span id="c-tiktok-sub">TikTok: –</span> | <span id="c-meta-sub">Meta: –</span></div></div>
-      <div class="card"><div class="label">Shopify Payments</div><div class="value red" id="c-fees">–</div><div class="sub">inkl. 0,30€ fix + Währung CH</div></div>
+      <div class="card"><div class="label">Shopify Payments</div><div class="value red" id="c-fees">–</div><div class="sub">2,7% / 4,2% CH + 0,30€</div></div>
       <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub" id="ust-rates-sub">DE 19% | AT 20% | CH 8.1%</div></div>
       <div class="card"><div class="label">Netto-Profit</div><div class="value green" id="c-profit">–</div>
         <div class="profit-bar"><div class="profit-bar-fill" id="profit-bar" style="width:0%"></div></div>
@@ -150,7 +150,7 @@
     </div>
     <div class="pnl-grid">
       <div class="panel"><h3>Gewinn & Verlust</h3><div id="pnl-table"><div class="empty-state">Zeitraum auswählen</div></div></div>
-      <div class="panel"><h3>📣 Werbekosten Aufschlüsselung</h3><div id="ads-breakdown"><div class="empty-state">Keine Daten</div></div></div>
+      <div class="panel"><h3>📣 Werbekosten</h3><div id="ads-breakdown"><div class="empty-state">Keine Daten</div></div></div>
     </div>
     <div class="panel"><h3>Bestellungen</h3><div id="orders-table"><div class="empty-state">Keine Daten geladen</div></div></div>
   </div>
@@ -159,24 +159,21 @@
   <div class="section" id="tab-adkosten">
     <div class="panel">
       <h3>📡 Datenquellen Status</h3>
-      <div id="source-status-cards">
-        <div class="api-connect-card">
-          <div class="api-header">
-            <div><div class="api-title">📘 Meta Ads</div><div class="api-subtitle">Wenn API Token hinterlegt → automatisch. Sonst → manuelle Einträge.</div></div>
-            <span class="source-badge source-inactive" id="meta-source-badge">⏳ Manuell</span>
-          </div>
+      <div class="api-connect-card">
+        <div class="api-header">
+          <div><div class="api-title">📘 Meta Ads</div><div class="api-subtitle">API Token hinterlegt → automatisch, sonst manuell.</div></div>
+          <span class="source-badge source-inactive" id="meta-source-badge">⏳ Manuell</span>
         </div>
-        <div class="api-connect-card">
-          <div class="api-header">
-            <div><div class="api-title">🎵 TikTok Ads</div><div class="api-subtitle">Wenn API Token hinterlegt → automatisch. Sonst → manuelle Einträge.</div></div>
-            <span class="source-badge source-inactive" id="tiktok-source-badge">⏳ Manuell</span>
-          </div>
+      </div>
+      <div class="api-connect-card">
+        <div class="api-header">
+          <div><div class="api-title">🎵 TikTok Ads</div><div class="api-subtitle">API Token hinterlegt → automatisch, sonst manuell.</div></div>
+          <span class="source-badge source-inactive" id="tiktok-source-badge">⏳ Manuell</span>
         </div>
       </div>
     </div>
     <div class="panel">
-      <h3>📘 Meta Werbekosten – tägliche Eingabe</h3>
-      <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine Meta/Facebook Ausgaben ein.</p>
+      <h3>📘 Meta Werbekosten – täglich</h3>
       <div class="meta-daily">
         <div class="form-group"><label>Datum</label><input type="date" id="meta-date" /></div>
         <div class="form-group"><label>Werbekosten (€)</label><input type="number" id="meta-amount" placeholder="z.B. 47.50" step="0.01" min="0" /></div>
@@ -186,8 +183,7 @@
     </div>
     <div class="panel"><h3>Eingetragene Meta Kosten</h3><div id="meta-history"><div class="empty-state">Noch keine Einträge</div></div></div>
     <div class="panel">
-      <h3>🎵 TikTok Werbekosten – tägliche Eingabe</h3>
-      <p style="font-size:0.82rem;color:#666;margin-bottom:18px;">Trage hier täglich deine TikTok Ausgaben ein.</p>
+      <h3>🎵 TikTok Werbekosten – täglich</h3>
       <div class="meta-daily">
         <div class="form-group"><label>Datum</label><input type="date" id="tiktok-date" /></div>
         <div class="form-group"><label>Werbekosten (€)</label><input type="number" id="tiktok-amount" placeholder="z.B. 83.20" step="0.01" min="0" /></div>
@@ -203,19 +199,16 @@
     <div class="panel">
       <h3>Produkte & Supplier-Preise</h3>
       <p style="font-size:0.82rem;color:#666;margin-bottom:14px;">
-        Pro Produkt kannst du <strong style="color:#6c5ce7">3 Staffelpreise</strong> eintragen: 1x, 2x und 3x+ Kosten pro Stück – je Land.
+        Lade deine Shopify-Produkte, wähle die <strong style="color:#ccc;">aktiven Produkte</strong> aus und trage pro Produkt die Supplier-Kosten für <strong style="color:#6c5ce7;">1x</strong>, <strong style="color:#00b894;">2x</strong> und <strong style="color:#fdcb6e;">3x+</strong> ein.
       </p>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-primary btn-sm" onclick="loadShopifyProducts()">🔄 Produkte aus Shopify laden <span id="shopify-load-spinner" style="display:none" class="loading"></span></button>
-        <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#888" onclick="addManualProductRow()">+ Manuell hinzufügen</button>
+        <button class="btn btn-primary btn-sm" onclick="loadShopifyProducts()">🔄 Aus Shopify laden <span id="shopify-load-spinner" style="display:none" class="loading"></span></button>
+        <button class="btn btn-sm" style="background:#18181f;border:1px solid #6c5ce7;color:#a29bfe;" onclick="openProductSelectModal()">✏️ Auswahl ändern</button>
+        <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#888;" onclick="addManualProductRow()">+ Manuell</button>
         <span id="shopify-load-msg" style="font-size:0.78rem;color:#00b894;display:none;"></span>
       </div>
-      <div style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:0.78rem;color:#888;line-height:1.7;">
-        <strong style="color:#ccc;">💡 Staffelpreise:</strong>
-        <span style="color:#fff;">1x</span> = Einzelkauf &nbsp;→&nbsp;
-        <span style="color:#00b894;">2x</span> = 2er Bundle (Kosten pro Stück) &nbsp;→&nbsp;
-        <span style="color:#fdcb6e;">3x+</span> = 3er Bundle (Kosten pro Stück)<br>
-        Felder leer lassen = vorheriger Tier wird verwendet.
+      <div style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem;color:#888;">
+        💡 <strong style="color:#fff;">1x</strong> = Einzelkauf &nbsp;→&nbsp; <strong style="color:#00b894;">2x</strong> = 2er Bundle (Kosten/Stück) &nbsp;→&nbsp; <strong style="color:#fdcb6e;">3x+</strong> = 3er Bundle (Kosten/Stück) &nbsp;·&nbsp; Felder leer = vorheriger Tier gilt
       </div>
       <div id="shopify-product-list"></div>
       <div class="bundle-section">
@@ -249,7 +242,6 @@
         <h3 style="margin:0;">📘 Meta Ads API</h3>
         <span class="source-badge source-inactive" id="meta-cfg-badge">⏳ Noch nicht verbunden</span>
       </div>
-      <p style="font-size:0.78rem;color:#666;margin-bottom:14px;">Sobald du Token & Account ID einträgst und speicherst, werden Meta Daten automatisch geladen.</p>
       <div class="form-grid">
         <div class="form-group"><label>Access Token</label><input type="password" id="cfg-meta-token" placeholder="Meta Access Token" /></div>
         <div class="form-group"><label>Ad Account ID</label><input type="text" id="cfg-meta-account" placeholder="act_XXXXXXXXX" /></div>
@@ -258,7 +250,7 @@
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
         <h3 style="margin:0;">🎵 TikTok Ads API</h3>
-        <span class="source-badge source-inactive" id="tiktok-cfg-badge">⏳ Pending – manuell aktiv</span>
+        <span class="source-badge source-inactive" id="tiktok-cfg-badge">⏳ Pending</span>
       </div>
       <div class="form-grid">
         <div class="form-group"><label>Access Token</label><input type="password" id="cfg-tiktok-token" placeholder="TikTok Access Token" /></div>
@@ -268,10 +260,8 @@
     <div class="panel">
       <h3>🧾 Steuersätze & Gebühren</h3>
       <div class="fee-info">
-        <strong>Shopify Payments Gebühren – automatisch berechnet:</strong><br>
-        🇩🇪 DE & 🇦🇹 AT: <strong>2,7% + 0,30€</strong> pro Bestellung<br>
-        🇨🇭 CH: <strong>4,2% + 0,30€</strong> pro Bestellung (inkl. 1,5% CHF→€)<br>
-        🌍 Sonstige: <strong>2,7% + 0,30€</strong> pro Bestellung
+        <strong>Shopify Payments – automatisch:</strong><br>
+        🇩🇪 DE & 🇦🇹 AT: <strong>2,7% + 0,30€</strong> | 🇨🇭 CH: <strong>4,2% + 0,30€</strong> | 🌍 Sonst.: <strong>2,7% + 0,30€</strong>
       </div>
       <div class="form-grid">
         <div class="form-group"><label>🇩🇪 USt Deutschland (%)</label><input type="number" id="cfg-ust-de" value="19" /></div>
@@ -281,6 +271,25 @@
     </div>
     <button class="btn btn-success" onclick="saveConfig()">💾 Einstellungen speichern</button>
     <span id="save-msg" style="font-size:0.82rem;color:#00b894;margin-left:12px;display:none;">✓ Gespeichert!</span>
+  </div>
+</div>
+
+<!-- Produkt-Auswahl Modal -->
+<div id="product-select-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:200;align-items:center;justify-content:center;">
+  <div style="background:#18181f;border:1px solid #2a2a3a;border-radius:14px;padding:28px;width:90%;max-width:600px;max-height:85vh;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h3 style="color:#fff;margin:0;">📦 Aktive Produkte auswählen</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" style="background:#2a2a3a;color:#aaa;" onclick="selectAllProducts(true)">Alle</button>
+        <button class="btn btn-sm" style="background:#2a2a3a;color:#aaa;" onclick="selectAllProducts(false)">Keine</button>
+      </div>
+    </div>
+    <p style="font-size:0.78rem;color:#666;margin:0;">Nur ausgewählte Produkte werden im Produkte-Tab angezeigt.</p>
+    <div id="product-select-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+      <button class="btn" style="background:#2a2a3a;color:#888;" onclick="closeProductSelectModal()">Abbrechen</button>
+      <button class="btn btn-success" onclick="confirmProductSelection()">✓ Übernehmen</button>
+    </div>
   </div>
 </div>
 
@@ -304,6 +313,7 @@
 <script>
 const PROXY = 'https://shopify-proxy.joshuaschulte-business.workers.dev';
 let config = {}, products = [], metaCosts = {}, tiktokCosts = {}, bundles = [], shopifyProductCache = [];
+let activeProductIds = new Set();
 
 function fmt(d) { return d.toISOString().split('T')[0]; }
 
@@ -317,8 +327,17 @@ function getUstRate(country) {
   return (parseFloat(config['cfg-ust-de']) || 19) / 100;
 }
 
+function groupByProduct(items) {
+  const map = new Map();
+  items.forEach(item => {
+    const pid = String(item.productId);
+    if (!map.has(pid)) map.set(pid, { productId: pid, title: item.title, variants: [] });
+    map.get(pid).variants.push(item);
+  });
+  return [...map.values()];
+}
+
 function getCostForItem(countryCode, qty, variantId) {
-  const land = ['DE','AT','CH'].includes(countryCode) ? countryCode : 'OTHER';
   qty = parseInt(qty) || 1;
   function bestTier(pool) {
     if (qty >= 3) { const m = pool.find(p => p.qty === 3); if (m) return m.cost; }
@@ -328,15 +347,17 @@ function getCostForItem(countryCode, qty, variantId) {
   }
   if (variantId) {
     const vid = String(variantId);
-    const pool = products.filter(p => p.variantId === vid && p.land === land);
+    const cached = shopifyProductCache.find(p => p.variantId === vid);
+    if (cached) {
+      const pid = String(cached.productId);
+      const pool = products.filter(p => p.productId === pid);
+      if (pool.length) return bestTier(pool);
+    }
+    const pool = products.filter(p => p.variantId === vid);
     if (pool.length) return bestTier(pool);
-    const poolAny = products.filter(p => p.variantId === vid);
-    if (poolAny.length) return bestTier(poolAny);
   }
-  const byLand = products.filter(p => p.land === land);
-  if (byLand.length) return bestTier(byLand);
-  const fallback = products.find(p => p.land === 'DE') || products[0];
-  return fallback ? fallback.cost : 0;
+  if (products.length) return bestTier(products);
+  return 0;
 }
 
 function loadState() {
@@ -346,13 +367,18 @@ function loadState() {
   try { tiktokCosts = JSON.parse(localStorage.getItem('femorea_tiktok') || '{}'); } catch(e) {}
   try { bundles = JSON.parse(localStorage.getItem('femorea_bundles') || '[]'); } catch(e) {}
   try { shopifyProductCache = JSON.parse(localStorage.getItem('femorea_shopify_products') || '[]'); } catch(e) {}
+  try { activeProductIds = new Set(JSON.parse(localStorage.getItem('femorea_active_products') || '[]')); } catch(e) {}
   ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at','cfg-ust-ch'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && config[id] !== undefined) el.value = config[id];
+    const el = document.getElementById(id); if (el && config[id] !== undefined) el.value = config[id];
   });
   renderSavedProducts(); renderAdHistory('meta'); renderAdHistory('tiktok');
   updateApiStatus(); renderBundleList();
-  if (shopifyProductCache.length) renderShopifyProductList(shopifyProductCache);
+  if (shopifyProductCache.length) {
+    const filtered = activeProductIds.size > 0
+      ? shopifyProductCache.filter(p => activeProductIds.has(String(p.productId)))
+      : shopifyProductCache;
+    renderShopifyProductList(filtered);
+  }
 }
 
 function saveConfig() {
@@ -430,7 +456,7 @@ async function loadDashboard() {
     const metaSpend = metaApi.spend > 0 ? metaApi.spend : getAdCostsForRange('meta', from, to);
     const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
     renderDashboard(shopifyData, tiktokSpend, metaSpend);
-  } catch(e) { alert('Fehler: ' + e.message); }
+  } catch(e) { alert('Fehler: ' + e.message); console.error(e); }
   finally { spinner.style.display = 'none'; }
 }
 
@@ -460,7 +486,7 @@ function renderAdHistory(platform) {
   if (!entries.length) { el.innerHTML = '<div class="empty-state">Noch keine Einträge</div>'; return; }
   const total = entries.reduce((s,[,v]) => s + v.amount, 0);
   el.innerHTML = '<table><thead><tr><th>Datum</th><th>Betrag</th><th>Notiz</th><th></th></tr></thead><tbody>' +
-    entries.map(([d,v]) => `<tr><td>${d}</td><td><strong>${v.amount.toFixed(2)} €</strong></td><td style="color:#888">${v.note||'–'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteAdCost('${platform}','${d}')">Löschen</button></td></tr>`).join('') +
+    entries.map(([d,v]) => `<tr><td>${d}</td><td><strong>${v.amount.toFixed(2)} €</strong></td><td style="color:#888">${v.note||'–'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteAdCost('${platform}','${d}')">✕</button></td></tr>`).join('') +
     `</tbody><tfoot><tr><td colspan="3" style="padding:10px 12px;font-size:0.8rem;color:#888">Gesamt</td><td style="padding:10px 12px;font-weight:700;color:#fff">${total.toFixed(2)} €</td></tr></tfoot></table>`;
 }
 
@@ -552,15 +578,14 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
       const info = ci[code] || {flag:'🌍',name:code};
       const profit = d.revenue - d.cogs - d.fees - d.ust;
       const ustPct = code==='AT'?(config['cfg-ust-at']||20):code==='CH'?(config['cfg-ust-ch']||8.1):(config['cfg-ust-de']||19);
-      const f2 = v => v.toFixed(2) + ' €';
       return `<div class="country-card">
         <h4><span class="flag">${info.flag}</span>${info.name} <span style="font-size:0.7rem;color:#666;font-weight:400">(${d.orders} Bestellungen)</span></h4>
-        <div class="row"><span>Umsatz</span><span>${f2(d.revenue)}</span></div>
-        <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f2(d.cogs)}</span></div>
-        <div class="row"><span>Payments (${code==='CH'?'4.2%':'2.7%'} + 0,30€)</span><span style="color:#e17055">– ${f2(d.fees)}</span></div>
-        <div class="row"><span>USt (${ustPct}%)</span><span style="color:#fdcb6e">– ${f2(d.ust)}</span></div>
+        <div class="row"><span>Umsatz</span><span>${f(d.revenue)}</span></div>
+        <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f(d.cogs)}</span></div>
+        <div class="row"><span>Payments (${code==='CH'?'4.2%':'2.7%'} + 0,30€)</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
+        <div class="row"><span>USt (${ustPct}%)</span><span style="color:#fdcb6e">– ${f(d.ust)}</span></div>
         <div class="row" style="border-top:1px solid #2a2a3a;margin-top:6px;padding-top:6px;font-weight:700">
-          <span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f2(profit)}</span>
+          <span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span>
         </div>
       </div>`;
     }).join('');
@@ -580,19 +605,19 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     <div class="summary-row"><span>TikTok Ads</span><span style="color:#e17055">${f(tiktokSpend)}</span></div>
     <div class="summary-row"><span>Meta Ads</span><span style="color:#e17055">${f(metaSpend)}</span></div>
     <div class="summary-row" style="border-top:2px solid #2a2a3a;margin-top:8px;padding-top:12px;font-weight:700">
-      <span>Gesamt Werbekosten</span><span style="color:#e17055">${f(totalAds)}</span>
+      <span>Gesamt</span><span style="color:#e17055">${f(totalAds)}</span>
     </div>
     <div class="summary-row"><span>Anteil am Umsatz</span><span style="color:#fdcb6e">${adPct.toFixed(1)}%</span></div>
     <div class="summary-row"><span>ROAS</span><span style="color:#00b894;font-size:1.05rem">${roas.toFixed(2)}x</span></div>
     <div class="summary-row"><span>Kosten pro Bestellung</span><span>${cpo > 0 ? f(cpo) : '–'}</span></div>`;
   if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
   const bc = { DE:'badge-de', AT:'badge-at', CH:'badge-ch' };
-  const fl = { DE:'🇩🇪', AT:'🇦🇹', CH:'🇨🇭' };
+  const fl2 = { DE:'🇩🇪', AT:'🇦🇹', CH:'🇨🇭' };
   document.getElementById('orders-table').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Payments</th><th>USt</th><th>Profit (ohne Ads)</th></tr></thead><tbody>' +
     shopify.orders.map(o => {
       const p = o.total - o.cogs - o.fees - o.ust;
       return `<tr><td><strong>${o.id}</strong></td><td style="color:#888">${o.date}</td>
-        <td><span class="badge ${bc[o.country]||'badge-other'}">${fl[o.country]||'🌍'} ${o.country}</span></td>
+        <td><span class="badge ${bc[o.country]||'badge-other'}">${fl2[o.country]||'🌍'} ${o.country}</span></td>
         <td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td>
         <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">– ${f(o.ust)}</td>
         <td style="color:${p>=0?'#00b894':'#e17055'};font-weight:700">${f(p)}</td></tr>`;
@@ -606,7 +631,7 @@ async function loadShopifyProducts() {
   const msg = document.getElementById('shopify-load-msg');
   spinner.style.display = 'inline-block'; msg.style.display = 'none';
   try {
-    const params = new URLSearchParams({ shop: domain, token, path: 'products.json', limit: '250', fields: 'id,title,variants' });
+    const params = new URLSearchParams({ shop: domain, token, path: 'products.json', limit: '250', fields: 'id,title,status,variants' });
     const resp = await fetch(`${PROXY}?${params}`);
     if (!resp.ok) throw new Error('Shopify Fehler: ' + resp.status);
     const data = await resp.json();
@@ -614,60 +639,100 @@ async function loadShopifyProducts() {
       p.variants.map(v => ({
         productId: p.id, variantId: String(v.id),
         title: p.title, variantTitle: v.title === 'Default Title' ? '' : v.title,
-        price: parseFloat(v.price) || 0
+        price: parseFloat(v.price) || 0, status: p.status || 'active'
       }))
     );
     localStorage.setItem('femorea_shopify_products', JSON.stringify(shopifyProductCache));
+    const total = [...new Set(shopifyProductCache.map(p => p.productId))].length;
     msg.style.display = 'inline';
-    msg.textContent = '✓ ' + shopifyProductCache.length + ' Varianten geladen';
-    renderShopifyProductList(shopifyProductCache);
+    msg.textContent = '✓ ' + total + ' Produkte geladen';
+    openProductSelectModal();
   } catch(e) { alert('Fehler: ' + e.message); }
   finally { spinner.style.display = 'none'; }
 }
 
+function openProductSelectModal() {
+  if (!shopifyProductCache.length) { alert('Bitte erst Produkte aus Shopify laden.'); return; }
+  try { activeProductIds = new Set(JSON.parse(localStorage.getItem('femorea_active_products') || '[]')); } catch(e) {}
+  const groups = groupByProduct(shopifyProductCache);
+  const modal = document.getElementById('product-select-modal');
+  const list = document.getElementById('product-select-list');
+  list.innerHTML = groups.map(g => {
+    const checked = activeProductIds.size === 0 || activeProductIds.has(String(g.productId));
+    return `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;cursor:pointer;">
+      <input type="checkbox" value="${g.productId}" ${checked?'checked':''} style="accent-color:#6c5ce7;width:16px;height:16px;flex-shrink:0;" />
+      <div>
+        <div style="font-size:0.85rem;font-weight:600;color:#fff;">${g.title}</div>
+        <div style="font-size:0.72rem;color:#555;margin-top:2px;">${g.variants.length} Variante${g.variants.length!==1?'n':''}</div>
+      </div>
+    </label>`;
+  }).join('');
+  modal.style.display = 'flex';
+}
+
+function closeProductSelectModal() {
+  document.getElementById('product-select-modal').style.display = 'none';
+}
+
+function selectAllProducts(val) {
+  document.querySelectorAll('#product-select-list input[type=checkbox]').forEach(cb => cb.checked = val);
+}
+
+function confirmProductSelection() {
+  activeProductIds = new Set([...document.querySelectorAll('#product-select-list input:checked')].map(i => i.value));
+  localStorage.setItem('femorea_active_products', JSON.stringify([...activeProductIds]));
+  closeProductSelectModal();
+  const filtered = shopifyProductCache.filter(p => activeProductIds.has(String(p.productId)));
+  renderShopifyProductList(filtered);
+}
+
 function renderShopifyProductList(items) {
   const container = document.getElementById('shopify-product-list');
-  if (!items.length) { container.innerHTML = '<div class="empty-state">Keine Produkte gefunden</div>'; return; }
+  if (!items.length) { container.innerHTML = '<div class="empty-state">Keine Produkte ausgewählt – nutze "Auswahl ändern".</div>'; return; }
   const savedMap = {};
-  products.forEach(p => { savedMap[p.variantId+'_'+p.land+'_'+p.qty] = p; });
-  const landLabels = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER:'🌍 Sonst.' };
-  const lands = ['DE','AT','CH','OTHER'];
-  container.innerHTML = items.map(item => {
-    const name = item.title + (item.variantTitle ? ' – '+item.variantTitle : '');
-    const rows = lands.map(land => {
-      const s1 = savedMap[item.variantId+'_'+land+'_1'];
-      const s2 = savedMap[item.variantId+'_'+land+'_2'];
-      const s3 = savedMap[item.variantId+'_'+land+'_3'];
-      const sOld = products.find(p => p.variantId===item.variantId && p.land===land && !p.qty);
-      const v1 = s1 ? s1.cost.toFixed(2) : (sOld ? sOld.cost.toFixed(2) : '');
-      const v2 = s2 ? s2.cost.toFixed(2) : '';
-      const v3 = s3 ? s3.cost.toFixed(2) : '';
-      return `<div style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:10px 12px;margin-top:6px;">
-        <div style="font-size:0.74rem;font-weight:700;color:#a29bfe;margin-bottom:10px;">${landLabels[land]}</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+  products.forEach(p => { if (p.productId) savedMap[p.productId+'_'+p.qty] = p; });
+  const groups = groupByProduct(items);
+  container.innerHTML = groups.map(g => {
+    const pid = String(g.productId);
+    const s1 = savedMap[pid+'_1'], s2 = savedMap[pid+'_2'], s3 = savedMap[pid+'_3'];
+    const v1 = s1 ? s1.cost.toFixed(2) : '';
+    const v2 = s2 ? s2.cost.toFixed(2) : '';
+    const v3 = s3 ? s3.cost.toFixed(2) : '';
+    const variantList = g.variants.map(v => v.variantTitle).filter(Boolean);
+    const variantInfo = variantList.length ? variantList.slice(0,5).join(', ') + (variantList.length>5?' …':'') : '–';
+    return `<div class="shopify-product-item">
+      <div>
+        <div class="prod-name">${g.title}</div>
+        <div class="prod-variant">${g.variants.length} Variante${g.variants.length!==1?'n':''}: ${variantInfo}</div>
+      </div>
+      <div style="background:#13131a;border:1px solid #2a2a3a;border-radius:8px;padding:12px 14px;margin-top:4px;">
+        <div style="font-size:0.72rem;color:#555;margin-bottom:10px;">Supplier-Kosten pro Stück · gilt für alle Varianten</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">
           <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
             <span style="font-size:0.68rem;color:#888;font-weight:600;">1x Kosten</span>
-            <input type="number" min="0" step="0.01" value="${v1}" id="cost1-${item.variantId}-${land}" placeholder="z.B. 9.50" style="background:#13131a;border:2px solid ${v1?'#6c5ce7':'#6c5ce755'};border-radius:6px;padding:7px 8px;color:#fff;font-size:0.88rem;font-weight:700;width:95px;outline:none;text-align:center;" oninput="this.style.borderColor=this.value?'#6c5ce7':'#6c5ce755'" />
-            <span style="font-size:0.63rem;color:#555;">€ pro Stück</span>
+            <input type="number" min="0" step="0.01" value="${v1}" id="cost1-${pid}" placeholder="z.B. 9.50"
+              style="background:#0f0f13;border:2px solid ${v1?'#6c5ce7':'#6c5ce755'};border-radius:6px;padding:8px 10px;color:#fff;font-size:0.95rem;font-weight:700;width:105px;outline:none;text-align:center;"
+              oninput="this.style.borderColor=this.value?'#6c5ce7':'#6c5ce755'" />
+            <span style="font-size:0.63rem;color:#555;">€ / Stück</span>
           </div>
-          <div style="color:#555;align-self:center;margin-top:6px;font-size:0.8rem;">→</div>
+          <div style="color:#333;font-size:1.1rem;padding-bottom:22px;">→</div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
             <span style="font-size:0.68rem;color:#888;font-weight:600;">2x Kosten</span>
-            <input type="number" min="0" step="0.01" value="${v2}" id="cost2-${item.variantId}-${land}" placeholder="= wie 1x" style="background:#13131a;border:2px solid ${v2?'#00b894':'#2a2a3a'};border-radius:6px;padding:7px 8px;color:#00b894;font-size:0.88rem;font-weight:700;width:95px;outline:none;text-align:center;" oninput="this.style.borderColor=this.value?'#00b894':'#2a2a3a'" />
-            <span style="font-size:0.63rem;color:#555;">€ pro Stück</span>
+            <input type="number" min="0" step="0.01" value="${v2}" id="cost2-${pid}" placeholder="= wie 1x"
+              style="background:#0f0f13;border:2px solid ${v2?'#00b894':'#2a2a3a'};border-radius:6px;padding:8px 10px;color:#00b894;font-size:0.95rem;font-weight:700;width:105px;outline:none;text-align:center;"
+              oninput="this.style.borderColor=this.value?'#00b894':'#2a2a3a'" />
+            <span style="font-size:0.63rem;color:#555;">€ / Stück</span>
           </div>
-          <div style="color:#555;align-self:center;margin-top:6px;font-size:0.8rem;">→</div>
+          <div style="color:#333;font-size:1.1rem;padding-bottom:22px;">→</div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
             <span style="font-size:0.68rem;color:#888;font-weight:600;">3x+ Kosten</span>
-            <input type="number" min="0" step="0.01" value="${v3}" id="cost3-${item.variantId}-${land}" placeholder="= wie 2x" style="background:#13131a;border:2px solid ${v3?'#fdcb6e':'#2a2a3a'};border-radius:6px;padding:7px 8px;color:#fdcb6e;font-size:0.88rem;font-weight:700;width:95px;outline:none;text-align:center;" oninput="this.style.borderColor=this.value?'#fdcb6e':'#2a2a3a'" />
-            <span style="font-size:0.63rem;color:#555;">€ pro Stück</span>
+            <input type="number" min="0" step="0.01" value="${v3}" id="cost3-${pid}" placeholder="= wie 2x"
+              style="background:#0f0f13;border:2px solid ${v3?'#fdcb6e':'#2a2a3a'};border-radius:6px;padding:8px 10px;color:#fdcb6e;font-size:0.95rem;font-weight:700;width:105px;outline:none;text-align:center;"
+              oninput="this.style.borderColor=this.value?'#fdcb6e':'#2a2a3a'" />
+            <span style="font-size:0.63rem;color:#555;">€ / Stück</span>
           </div>
         </div>
-      </div>`;
-    }).join('');
-    return `<div class="shopify-product-item">
-      <div><div class="prod-name">${name}</div><div class="prod-variant">Variant ID: ${item.variantId} | Shopify Preis: ${item.price.toFixed(2)} €</div></div>
-      <div>${rows}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -695,16 +760,18 @@ function addManualProductRow() {
 
 function saveAllProducts() {
   const newProducts = [];
-  shopifyProductCache.forEach(item => {
-    ['DE','AT','CH','OTHER'].forEach(land => {
-      const c1 = parseFloat(document.getElementById('cost1-'+item.variantId+'-'+land)?.value);
-      const c2 = parseFloat(document.getElementById('cost2-'+item.variantId+'-'+land)?.value);
-      const c3 = parseFloat(document.getElementById('cost3-'+item.variantId+'-'+land)?.value);
-      const name = item.title+(item.variantTitle?' – '+item.variantTitle:'');
-      if (!isNaN(c1) && c1 > 0) newProducts.push({ name, land, qty: 1, cost: c1, variantId: item.variantId });
-      if (!isNaN(c2) && c2 > 0) newProducts.push({ name, land, qty: 2, cost: c2, variantId: item.variantId });
-      if (!isNaN(c3) && c3 > 0) newProducts.push({ name, land, qty: 3, cost: c3, variantId: item.variantId });
-    });
+  const activeItems = activeProductIds.size > 0
+    ? shopifyProductCache.filter(p => activeProductIds.has(String(p.productId)))
+    : shopifyProductCache;
+  const groups = groupByProduct(activeItems);
+  groups.forEach(g => {
+    const pid = String(g.productId);
+    const c1 = parseFloat(document.getElementById('cost1-'+pid)?.value);
+    const c2 = parseFloat(document.getElementById('cost2-'+pid)?.value);
+    const c3 = parseFloat(document.getElementById('cost3-'+pid)?.value);
+    if (!isNaN(c1) && c1 > 0) newProducts.push({ name: g.title, productId: pid, qty: 1, cost: c1, variantIds: g.variants.map(v=>v.variantId) });
+    if (!isNaN(c2) && c2 > 0) newProducts.push({ name: g.title, productId: pid, qty: 2, cost: c2, variantIds: g.variants.map(v=>v.variantId) });
+    if (!isNaN(c3) && c3 > 0) newProducts.push({ name: g.title, productId: pid, qty: 3, cost: c3, variantIds: g.variants.map(v=>v.variantId) });
   });
   document.querySelectorAll('[id^="manual-"]').forEach(row => {
     const id = row.id;
@@ -712,35 +779,41 @@ function saveAllProducts() {
     const q = document.getElementById(id+'-qty'), c = document.getElementById(id+'-cost');
     const v = document.getElementById(id+'-vid');
     if (n && c) { const name = n.value.trim(), cost = parseFloat(c.value);
-      if (name && !isNaN(cost) && cost > 0) newProducts.push({ name, land: l.value, qty: parseInt(q.value)||1, cost, variantId: v?v.value.trim():'' }); }
+      if (name && !isNaN(cost) && cost > 0) newProducts.push({ name, land: l?.value||'DE', qty: parseInt(q?.value)||1, cost, variantId: v?v.value.trim():'' }); }
   });
   products = newProducts;
   localStorage.setItem('femorea_products', JSON.stringify(products));
   renderSavedProducts();
-  alert('✓ Produktkosten gespeichert! (' + products.length + ' Einträge)');
+  alert('✓ Gespeichert! (' + groups.length + ' Produkte, ' + newProducts.length + ' Einträge)');
 }
 
 function renderSavedProducts() {
   const el = document.getElementById('saved-products-table');
   if (!products.length) { el.innerHTML = '<div class="empty-state">Noch keine Produkte</div>'; return; }
-  const bc = {DE:'badge-de',AT:'badge-at',CH:'badge-ch',OTHER:'badge-other'};
-  const fl = {DE:'🇩🇪 DE',AT:'🇦🇹 AT',CH:'🇨🇭 CH',OTHER:'🌍 Sonst.'};
-  const qtyColor = {1:'#fff', 2:'#00b894', 3:'#fdcb6e'};
-  const qtyLabel = {1:'1x', 2:'2x', 3:'3x+'};
-  el.innerHTML = '<table><thead><tr><th>Produkt</th><th>Land</th><th>Qty</th><th>Kosten / Stück</th><th>Variant ID</th></tr></thead><tbody>' +
-    products.map(p => `<tr>
-      <td>${p.name}</td>
-      <td><span class="badge ${bc[p.land]||'badge-other'}">${fl[p.land]||p.land}</span></td>
-      <td><span style="color:${qtyColor[p.qty]||'#fff'};font-weight:700">${qtyLabel[p.qty]||p.qty+'x'}</span></td>
-      <td><strong style="color:${qtyColor[p.qty]||'#fff'}">${p.cost.toFixed(2)} €</strong></td>
-      <td style="color:#666;font-size:0.75rem">${p.variantId||'–'}</td>
-    </tr>`).join('') + '</tbody></table>';
+  const byProduct = new Map();
+  products.forEach(p => {
+    const key = p.productId || p.variantId || p.name;
+    if (!byProduct.has(key)) byProduct.set(key, { name: p.name, entries: [] });
+    byProduct.get(key).entries.push(p);
+  });
+  el.innerHTML = '<table><thead><tr><th>Produkt</th><th>1x Kosten</th><th>2x Kosten</th><th>3x+ Kosten</th></tr></thead><tbody>' +
+    [...byProduct.values()].map(g => {
+      const e1 = g.entries.find(e=>e.qty===1), e2 = g.entries.find(e=>e.qty===2), e3 = g.entries.find(e=>e.qty===3);
+      return `<tr>
+        <td style="font-weight:600">${g.name}</td>
+        <td><strong style="color:#fff">${e1?e1.cost.toFixed(2)+' €':'–'}</strong></td>
+        <td><strong style="color:#00b894">${e2?e2.cost.toFixed(2)+' €':'–'}</strong></td>
+        <td><strong style="color:#fdcb6e">${e3?e3.cost.toFixed(2)+' €':'–'}</strong></td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
 }
 
 function openBundleCreator() {
-  const unique = [...new Map(shopifyProductCache.map(p => [p.variantId, p])).values()];
-  document.getElementById('bundle-product-checkboxes').innerHTML = unique.map(p =>
-    `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.84rem;color:#ccc;"><input type="checkbox" value="${p.variantId}" style="accent-color:#6c5ce7;" /> ${p.title}${p.variantTitle?' – '+p.variantTitle:''}</label>`).join('');
+  const groups = groupByProduct(shopifyProductCache);
+  document.getElementById('bundle-product-checkboxes').innerHTML = groups.map(g =>
+    `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.84rem;color:#ccc;">
+      <input type="checkbox" value="${g.productId}" style="accent-color:#6c5ce7;" /> ${g.title}
+    </label>`).join('');
   document.getElementById('bundle-name-input').value = '';
   document.getElementById('bundle-modal').style.display = 'flex';
 }
@@ -753,10 +826,10 @@ function saveBundle() {
   const checked = [...document.querySelectorAll('#bundle-product-checkboxes input:checked')].map(i => i.value);
   if (checked.length < 2) { alert('Mindestens 2 Produkte auswählen.'); return; }
   const labels = checked.map(id => {
-    const p = shopifyProductCache.find(p => p.variantId === id);
-    return p ? p.title+(p.variantTitle?' – '+p.variantTitle:'') : id;
+    const g = groupByProduct(shopifyProductCache).find(g => String(g.productId) === id);
+    return g ? g.title : id;
   });
-  bundles.push({ name, variantIds: checked, labels });
+  bundles.push({ name, productIds: checked, labels });
   localStorage.setItem('femorea_bundles', JSON.stringify(bundles));
   renderBundleList(); closeBundleModal();
 }
