@@ -81,17 +81,6 @@
     .prod-name { font-size: 0.9rem; font-weight: 700; color: #fff; }
     .prod-variant { font-size: 0.72rem; color: #555; margin-top: 2px; }
     .price-box { background: #13131a; border: 1px solid #2a2a3a; border-radius: 8px; padding: 12px 14px; margin-top: 10px; }
-    .price-box-title { font-size: 0.72rem; color: #555; margin-bottom: 10px; }
-    .qty-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-    .qty-col { display: flex; flex-direction: column; gap: 4px; align-items: center; }
-    .qty-col label { font-size: 0.68rem; color: #888; font-weight: 600; white-space: nowrap; }
-    .qty-col input { background: #0f0f13; border: 2px solid #2a2a3a; border-radius: 6px; padding: 8px 10px; font-size: 0.92rem; font-weight: 700; width: 105px; outline: none; text-align: center; }
-    .qty-col .unit { font-size: 0.63rem; color: #555; }
-    .qty-arrow { color: #333; font-size: 1rem; padding-bottom: 20px; }
-    .land-toggle { display: flex; align-items: center; gap: 7px; margin-top: 10px; cursor: pointer; font-size: 0.78rem; color: #666; user-select: none; }
-    .land-toggle:hover { color: #a29bfe; }
-    .land-details { display: none; margin-top: 10px; border-top: 1px solid #2a2a3a; padding-top: 10px; }
-    .land-details.open { display: block; }
     .land-row { display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #1a1a24; }
     .land-row:last-child { border-bottom: none; }
     .land-flag { font-size: 0.82rem; color: #888; font-weight: 600; }
@@ -217,20 +206,13 @@
     <div class="panel">
       <h3>Produkte & Supplier-Preise</h3>
       <p style="font-size:0.82rem;color:#666;margin-bottom:14px;">
-        Lade deine Shopify-Produkte, wähle aktive aus und trage den <strong style="color:#ccc;">Gesamtpreis</strong> ein den du beim Supplier zahlst – für 1, 2 und 3+ Bestellungen. Optional pro Land abweichend.
+        Trage pro Land den <strong style="color:#ccc;">Gesamtpreis</strong> ein, den du beim Supplier zahlst – je nach Bestellmenge (1x / 2x / 3x+).
       </p>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary btn-sm" onclick="loadShopifyProducts()">🔄 Aus Shopify laden <span id="shopify-load-spinner" style="display:none" class="loading"></span></button>
         <button class="btn btn-sm" style="background:#18181f;border:1px solid #6c5ce7;color:#a29bfe;" onclick="openProductSelectModal()">✏️ Auswahl ändern</button>
         <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#888;" onclick="addManualProductRow()">+ Manuell</button>
         <span id="shopify-load-msg" style="font-size:0.78rem;color:#00b894;display:none;"></span>
-      </div>
-      <div style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:0.78rem;color:#888;line-height:1.7;">
-        💡 Trage den <strong style="color:#fff;">Gesamtpreis</strong> ein, den du beim Supplier zahlst:<br>
-        <strong style="color:#6c5ce7;">1x</strong> = Preis für 1 Bestellung &nbsp;|&nbsp;
-        <strong style="color:#00b894;">2x</strong> = Gesamtpreis wenn Kunde 2 bestellt &nbsp;|&nbsp;
-        <strong style="color:#fdcb6e;">3x+</strong> = Gesamtpreis wenn Kunde 3+ bestellt<br>
-        <span style="color:#555;">Länder-Override optional aufklappen falls Supplier-Preis je nach Land abweicht.</span>
       </div>
       <div id="shopify-product-list"></div>
       <div class="bundle-section">
@@ -341,11 +323,7 @@ const LANDS = ['DE','AT','CH','OTHER'];
 const LAND_LABEL = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER:'🌍 Sonst.' };
 
 function fmt(d) { return d.toISOString().split('T')[0]; }
-
-function getPaymentFee(country, total) {
-  return (total * (country === 'CH' ? 0.042 : 0.027)) + 0.30;
-}
-
+function getPaymentFee(country, total) { return (total * (country === 'CH' ? 0.042 : 0.027)) + 0.30; }
 function getUstRate(country) {
   if (country === 'AT') return (parseFloat(config['cfg-ust-at']) || 20) / 100;
   if (country === 'CH') return (parseFloat(config['cfg-ust-ch']) || 8.1) / 100;
@@ -372,29 +350,28 @@ function getCostForOrder(countryCode, qty, variantId) {
     if (cached) pid = String(cached.productId);
   }
 
+  function cost(p) { return p.totalCost !== undefined ? p.totalCost : (p.cost !== undefined ? p.cost : 0); }
+
   function findEntry(pool) {
     const exact = pool.find(p => p.qty === qty);
-    if (exact) return exact.totalCost;
+    if (exact) return cost(exact);
     const lower = pool.filter(p => p.qty <= qty).sort((a,b) => b.qty - a.qty);
-    if (lower.length) return lower[0].totalCost;
-    return pool.sort((a,b) => a.qty - b.qty)[0]?.totalCost || 0;
+    if (lower.length) return cost(lower[0]);
+    return cost([...pool].sort((a,b) => b.qty - a.qty)[0]) || 0;
   }
 
   if (pid) {
     const poolLand = products.filter(p => p.productId === pid && p.land === land);
     if (poolLand.length) return findEntry(poolLand);
-    const poolDefault = products.filter(p => p.productId === pid && !p.land);
-    if (poolDefault.length) return findEntry(poolDefault);
+    const poolOther = products.filter(p => p.productId === pid && p.land === 'OTHER');
+    if (poolOther.length) return findEntry(poolOther);
     const poolAny = products.filter(p => p.productId === pid);
     if (poolAny.length) return findEntry(poolAny);
   }
-
   if (variantId) {
     const pool = products.filter(p => p.variantId === String(variantId));
     if (pool.length) return findEntry(pool);
   }
-
-  if (products.length) return findEntry(products);
   return 0;
 }
 
@@ -713,11 +690,9 @@ function openProductSelectModal() {
 }
 
 function closeProductSelectModal() { document.getElementById('product-select-modal').style.display = 'none'; }
-
 function selectAllProducts(val) {
   document.querySelectorAll('#product-select-list input[type=checkbox]').forEach(cb => cb.checked = val);
 }
-
 function confirmProductSelection() {
   activeProductIds = new Set([...document.querySelectorAll('#product-select-list input:checked')].map(i => i.value));
   localStorage.setItem('femorea_active_products', JSON.stringify([...activeProductIds]));
@@ -732,9 +707,8 @@ function renderShopifyProductList(items) {
 
   const savedMap = {};
   products.forEach(p => {
-    if (p.productId) {
-      const key = p.land ? `${p.productId}_${p.qty}_${p.land}` : `${p.productId}_${p.qty}`;
-      savedMap[key] = p.totalCost;
+    if (p.productId && p.land) {
+      savedMap[`${p.productId}_${p.qty}_${p.land}`] = p.totalCost !== undefined ? p.totalCost : (p.cost || 0);
     }
   });
 
@@ -744,86 +718,38 @@ function renderShopifyProductList(items) {
     const variantList = g.variants.map(v => v.variantTitle).filter(Boolean);
     const variantInfo = variantList.length ? variantList.slice(0,5).join(', ') + (variantList.length>5?' …':'') : '–';
 
-    const d1 = savedMap[`${pid}_1`] !== undefined ? savedMap[`${pid}_1`].toFixed(2) : '';
-    const d2 = savedMap[`${pid}_2`] !== undefined ? savedMap[`${pid}_2`].toFixed(2) : '';
-    const d3 = savedMap[`${pid}_3`] !== undefined ? savedMap[`${pid}_3`].toFixed(2) : '';
-
     const landRows = LANDS.map(land => {
       const l1 = savedMap[`${pid}_1_${land}`] !== undefined ? savedMap[`${pid}_1_${land}`].toFixed(2) : '';
       const l2 = savedMap[`${pid}_2_${land}`] !== undefined ? savedMap[`${pid}_2_${land}`].toFixed(2) : '';
       const l3 = savedMap[`${pid}_3_${land}`] !== undefined ? savedMap[`${pid}_3_${land}`].toFixed(2) : '';
-      const hasValue = l1||l2||l3;
       return `<div class="land-row">
         <div class="land-flag">${LAND_LABEL[land]}</div>
-        <input type="number" min="0" step="0.01" value="${l1}" id="land-${pid}-${land}-1" placeholder="= Standard"
-          class="land-input${hasValue?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
-        <input type="number" min="0" step="0.01" value="${l2}" id="land-${pid}-${land}-2" placeholder="= Standard"
-          class="land-input${hasValue?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
-        <input type="number" min="0" step="0.01" value="${l3}" id="land-${pid}-${land}-3" placeholder="= Standard"
-          class="land-input${hasValue?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
+        <input type="number" min="0" step="0.01" value="${l1}" id="land-${pid}-${land}-1" placeholder="–"
+          class="land-input${l1?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
+        <input type="number" min="0" step="0.01" value="${l2}" id="land-${pid}-${land}-2" placeholder="–"
+          class="land-input${l2?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
+        <input type="number" min="0" step="0.01" value="${l3}" id="land-${pid}-${land}-3" placeholder="–"
+          class="land-input${l3?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
       </div>`;
     }).join('');
 
-    const hasLandOverrides = LANDS.some(land =>
-      savedMap[`${pid}_1_${land}`] || savedMap[`${pid}_2_${land}`] || savedMap[`${pid}_3_${land}`]
-    );
-
     return `<div class="prod-item">
-      <div>
+      <div style="margin-bottom:10px;">
         <div class="prod-name">${g.title}</div>
         <div class="prod-variant">${g.variants.length} Variante${g.variants.length!==1?'n':''}: ${variantInfo}</div>
       </div>
       <div class="price-box">
-        <div class="price-box-title">Gesamtpreis den du beim Supplier zahlst · gilt für alle Varianten</div>
-        <div class="qty-row">
-          <div class="qty-col">
-            <label style="color:#6c5ce7;">1x Gesamtpreis</label>
-            <input type="number" min="0" step="0.01" value="${d1}" id="cost1-${pid}" placeholder="z.B. 9.50"
-              style="color:#fff;border-color:${d1?'#6c5ce7':'#6c5ce755'};"
-              oninput="this.style.borderColor=this.value?'#6c5ce7':'#6c5ce755'" />
-            <span class="unit">€ gesamt</span>
-          </div>
-          <div class="qty-arrow">→</div>
-          <div class="qty-col">
-            <label style="color:#00b894;">2x Gesamtpreis</label>
-            <input type="number" min="0" step="0.01" value="${d2}" id="cost2-${pid}" placeholder="z.B. 16.00"
-              style="color:#00b894;border-color:${d2?'#00b894':'#2a2a3a'};"
-              oninput="this.style.borderColor=this.value?'#00b894':'#2a2a3a'" />
-            <span class="unit">€ gesamt</span>
-          </div>
-          <div class="qty-arrow">→</div>
-          <div class="qty-col">
-            <label style="color:#fdcb6e;">3x+ Gesamtpreis</label>
-            <input type="number" min="0" step="0.01" value="${d3}" id="cost3-${pid}" placeholder="z.B. 22.00"
-              style="color:#fdcb6e;border-color:${d3?'#fdcb6e':'#2a2a3a'};"
-              oninput="this.style.borderColor=this.value?'#fdcb6e':'#2a2a3a'" />
-            <span class="unit">€ gesamt</span>
-          </div>
+        <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #2a2a3a;">
+          <div></div>
+          <div style="font-size:0.72rem;color:#6c5ce7;text-align:center;font-weight:700;">1x Gesamtpreis</div>
+          <div style="font-size:0.72rem;color:#00b894;text-align:center;font-weight:700;">2x Gesamtpreis</div>
+          <div style="font-size:0.72rem;color:#fdcb6e;text-align:center;font-weight:700;">3x+ Gesamtpreis</div>
         </div>
-        <div class="land-toggle" onclick="toggleLandDetails('land-detail-${pid}', this)">
-          <span style="font-size:0.8rem;">${hasLandOverrides?'▼':'▶'}</span>
-          🌍 Länder-Override (optional – falls Supplier-Preis je nach Land abweicht)
-          ${hasLandOverrides?'<span style="color:#00b894;font-size:0.7rem;margin-left:4px;">● aktiv</span>':''}
-        </div>
-        <div class="land-details${hasLandOverrides?' open':''}" id="land-detail-${pid}">
-          <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;margin-bottom:6px;">
-            <div style="font-size:0.68rem;color:#555;"></div>
-            <div style="font-size:0.68rem;color:#6c5ce7;text-align:center;font-weight:700;">1x €</div>
-            <div style="font-size:0.68rem;color:#00b894;text-align:center;font-weight:700;">2x €</div>
-            <div style="font-size:0.68rem;color:#fdcb6e;text-align:center;font-weight:700;">3x+ €</div>
-          </div>
-          ${landRows}
-        </div>
+        ${landRows}
+        <div style="font-size:0.7rem;color:#444;margin-top:8px;">Gesamtpreis = was du beim Supplier zahlst · leer = kein Eintrag</div>
       </div>
     </div>`;
   }).join('');
-}
-
-function toggleLandDetails(id, toggleEl) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const open = el.classList.toggle('open');
-  toggleEl.querySelector('span').textContent = open ? '▼' : '▶';
 }
 
 function addManualProductRow() {
@@ -834,12 +760,10 @@ function addManualProductRow() {
   div.innerHTML = `
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
       <input type="text" placeholder="Produktname" id="${id}-name" style="flex:1;min-width:160px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.85rem;outline:none;" />
-      <input type="text" placeholder="Variant ID (optional)" id="${id}-vid" style="width:150px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:7px 9px;color:#fff;font-size:0.82rem;outline:none;" />
       <button class="btn btn-danger btn-sm" onclick="document.getElementById('${id}').remove()">✕</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <select id="${id}-land" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:7px;padding:6px 9px;color:#fff;font-size:0.82rem;">
-        <option value="">Alle Länder</option>
         <option value="DE">🇩🇪 DE</option><option value="AT">🇦🇹 AT</option><option value="CH">🇨🇭 CH</option><option value="OTHER">🌍 Sonst.</option>
       </select>
       <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
@@ -863,12 +787,6 @@ function saveAllProducts() {
 
   groups.forEach(g => {
     const pid = String(g.productId);
-    [1,2,3].forEach(qty => {
-      const val = parseFloat(document.getElementById(`cost${qty}-${pid}`)?.value);
-      if (!isNaN(val) && val > 0) {
-        newProducts.push({ name: g.title, productId: pid, qty, totalCost: val });
-      }
-    });
     LANDS.forEach(land => {
       [1,2,3].forEach(qty => {
         const val = parseFloat(document.getElementById(`land-${pid}-${land}-${qty}`)?.value);
@@ -885,13 +803,10 @@ function saveAllProducts() {
     const l = document.getElementById(id+'-land');
     const q = document.getElementById(id+'-qty');
     const c = document.getElementById(id+'-cost');
-    const v = document.getElementById(id+'-vid');
     if (n && c) {
       const name = n.value.trim(), totalCost = parseFloat(c.value);
       if (name && !isNaN(totalCost) && totalCost > 0) {
-        const entry = { name, qty: parseInt(q?.value)||1, totalCost, variantId: v?v.value.trim():'' };
-        if (l?.value) entry.land = l.value;
-        newProducts.push(entry);
+        newProducts.push({ name, qty: parseInt(q?.value)||1, land: l?.value||'DE', totalCost });
       }
     }
   });
@@ -899,7 +814,7 @@ function saveAllProducts() {
   products = newProducts;
   localStorage.setItem('femorea_products', JSON.stringify(products));
   renderSavedProducts();
-  alert('✓ Gespeichert! (' + groups.length + ' Produkte, ' + newProducts.length + ' Einträge)');
+  alert('✓ Gespeichert! (' + newProducts.length + ' Einträge)');
 }
 
 function renderSavedProducts() {
@@ -907,23 +822,27 @@ function renderSavedProducts() {
   if (!products.length) { el.innerHTML = '<div class="empty-state">Noch keine Produkte</div>'; return; }
   const byProduct = new Map();
   products.forEach(p => {
-    const key = p.productId || p.variantId || p.name;
+    const key = p.productId || p.name;
     if (!byProduct.has(key)) byProduct.set(key, { name: p.name, entries: [] });
     byProduct.get(key).entries.push(p);
   });
-  el.innerHTML = '<table><thead><tr><th>Produkt</th><th>Qty</th><th>Gesamtkosten</th><th>Land</th></tr></thead><tbody>' +
-    [...byProduct.values()].flatMap(g =>
-      g.entries.sort((a,b) => a.qty - b.qty).map(e => {
-        const c = {1:'#fff',2:'#00b894',3:'#fdcb6e'}[e.qty]||'#fff';
-        const ql = {1:'1x',2:'2x',3:'3x+'}[e.qty]||(e.qty+'x');
+  el.innerHTML = '<table><thead><tr><th>Produkt</th><th>Land</th><th>1x</th><th>2x</th><th>3x+</th></tr></thead><tbody>' +
+    [...byProduct.values()].map(g => {
+      const lands = [...new Set(g.entries.map(e => e.land))].filter(Boolean);
+      return lands.map(land => {
+        const e1 = g.entries.find(e => e.land === land && e.qty === 1);
+        const e2 = g.entries.find(e => e.land === land && e.qty === 2);
+        const e3 = g.entries.find(e => e.land === land && e.qty === 3);
+        const tc = e => e ? (e.totalCost||e.cost||0).toFixed(2)+' €' : '–';
         return `<tr>
-          <td style="font-weight:600">${e.name}</td>
-          <td><strong style="color:${c}">${ql}</strong></td>
-          <td><strong style="color:${c}">${e.totalCost.toFixed(2)} €</strong></td>
-          <td style="color:#666;font-size:0.75rem">${e.land ? LAND_LABEL[e.land]||e.land : 'alle Länder'}</td>
+          <td style="font-weight:600">${g.name}</td>
+          <td style="color:#888;font-size:0.75rem">${LAND_LABEL[land]||land}</td>
+          <td style="color:#6c5ce7;font-weight:700">${tc(e1)}</td>
+          <td style="color:#00b894;font-weight:700">${tc(e2)}</td>
+          <td style="color:#fdcb6e;font-weight:700">${tc(e3)}</td>
         </tr>`;
-      })
-    ).join('') + '</tbody></table>';
+      }).join('');
+    }).join('') + '</tbody></table>';
 }
 
 function openBundleCreator() {
@@ -935,28 +854,21 @@ function openBundleCreator() {
   document.getElementById('bundle-name-input').value = '';
   document.getElementById('bundle-modal').style.display = 'flex';
 }
-
 function closeBundleModal() { document.getElementById('bundle-modal').style.display = 'none'; }
-
 function saveBundle() {
   const name = document.getElementById('bundle-name-input').value.trim();
   if (!name) { alert('Bitte Bundle-Name eingeben.'); return; }
   const checked = [...document.querySelectorAll('#bundle-product-checkboxes input:checked')].map(i => i.value);
   if (checked.length < 2) { alert('Mindestens 2 Produkte auswählen.'); return; }
-  const labels = checked.map(id => {
-    const g = groupByProduct(shopifyProductCache).find(g => String(g.productId) === id);
-    return g ? g.title : id;
-  });
+  const labels = checked.map(id => groupByProduct(shopifyProductCache).find(g => String(g.productId) === id)?.title || id);
   bundles.push({ name, productIds: checked, labels });
   localStorage.setItem('femorea_bundles', JSON.stringify(bundles));
   renderBundleList(); closeBundleModal();
 }
-
 function deleteBundle(idx) {
   if (!confirm('Bundle löschen?')) return;
   bundles.splice(idx,1); localStorage.setItem('femorea_bundles', JSON.stringify(bundles)); renderBundleList();
 }
-
 function renderBundleList() {
   const el = document.getElementById('bundle-list');
   if (!bundles.length) { el.innerHTML = '<div class="empty-state" style="padding:16px">Noch keine Bundles</div>'; return; }
