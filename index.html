@@ -350,14 +350,17 @@ function getCostForOrder(countryCode, qty, variantId) {
     if (cached) pid = String(cached.productId);
   }
 
-  function cost(p) { return p.totalCost !== undefined ? p.totalCost : (p.cost !== undefined ? p.cost : 0); }
+  function cost(p) {
+    return p.totalCost !== undefined ? p.totalCost : (p.cost !== undefined ? p.cost : 0);
+  }
 
   function findEntry(pool) {
-    const exact = pool.find(p => p.qty === qty);
+    // parseInt on both sides to prevent "2" === 2 type mismatch
+    const exact = pool.find(p => parseInt(p.qty) === qty);
     if (exact) return cost(exact);
-    const lower = pool.filter(p => p.qty <= qty).sort((a,b) => b.qty - a.qty);
+    const lower = pool.filter(p => parseInt(p.qty) <= qty).sort((a,b) => parseInt(b.qty) - parseInt(a.qty));
     if (lower.length) return cost(lower[0]);
-    return cost([...pool].sort((a,b) => b.qty - a.qty)[0]) || 0;
+    return cost([...pool].sort((a,b) => parseInt(b.qty) - parseInt(a.qty))[0]) || 0;
   }
 
   if (pid) {
@@ -830,9 +833,9 @@ function renderSavedProducts() {
     [...byProduct.values()].map(g => {
       const lands = [...new Set(g.entries.map(e => e.land))].filter(Boolean);
       return lands.map(land => {
-        const e1 = g.entries.find(e => e.land === land && e.qty === 1);
-        const e2 = g.entries.find(e => e.land === land && e.qty === 2);
-        const e3 = g.entries.find(e => e.land === land && e.qty === 3);
+        const e1 = g.entries.find(e => e.land === land && parseInt(e.qty) === 1);
+        const e2 = g.entries.find(e => e.land === land && parseInt(e.qty) === 2);
+        const e3 = g.entries.find(e => e.land === land && parseInt(e.qty) === 3);
         const tc = e => e ? (e.totalCost||e.cost||0).toFixed(2)+' €' : '–';
         return `<tr>
           <td style="font-weight:600">${g.name}</td>
