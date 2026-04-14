@@ -143,7 +143,7 @@
       <div class="card"><div class="label">Produktkosten</div><div class="value red" id="c-cogs">–</div><div class="sub">Supplier Gesamtpreise</div></div>
       <div class="card"><div class="label">Werbekosten</div><div class="value red" id="c-adspend">–</div><div class="sub"><span id="c-tiktok-sub">TikTok: –</span> | <span id="c-meta-sub">Meta: –</span></div></div>
       <div class="card"><div class="label">Shopify Payments</div><div class="value red" id="c-fees">–</div><div class="sub">2,7% / 4,2% CH + 0,30€</div></div>
-      <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub" id="ust-rates-sub">DE 19% | AT 20% | CH 8.1%</div></div>
+      <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub" id="ust-rates-sub">DE 19% | AT 20% | CH 0%</div></div>
       <div class="card"><div class="label">Netto-Profit</div><div class="value green" id="c-profit">–</div>
         <div class="profit-bar"><div class="profit-bar-fill" id="profit-bar" style="width:0%"></div></div>
         <div class="sub" id="c-margin">Marge: – | ROAS: –</div>
@@ -265,12 +265,12 @@
       <h3>🧾 Steuersätze & Gebühren</h3>
       <div class="fee-info">
         <strong>Shopify Payments – automatisch:</strong><br>
-        🇩🇪 DE & 🇦🇹 AT: <strong>2,7% + 0,30€</strong> &nbsp;|&nbsp; 🇨🇭 CH: <strong>4,2% + 0,30€</strong> &nbsp;|&nbsp; 🌍 Sonst.: <strong>2,7% + 0,30€</strong>
+        🇩🇪 DE & 🇦🇹 AT: <strong>2,7% + 0,30€</strong> &nbsp;|&nbsp; 🇨🇭 CH: <strong>4,2% + 0,30€</strong> &nbsp;|&nbsp; 🌍 Sonst.: <strong>2,7% + 0,30€</strong><br><br>
+        <strong>USt CH = 0%</strong> (Export – keine Schweizer Mehrwertsteuerpflicht)
       </div>
       <div class="form-grid">
         <div class="form-group"><label>🇩🇪 USt Deutschland (%)</label><input type="number" id="cfg-ust-de" value="19" /></div>
         <div class="form-group"><label>🇦🇹 USt Österreich (%)</label><input type="number" id="cfg-ust-at" value="20" /></div>
-        <div class="form-group"><label>🇨🇭 USt Schweiz (%)</label><input type="number" id="cfg-ust-ch" value="8.1" /></div>
       </div>
     </div>
     <button class="btn btn-success" onclick="saveConfig()">💾 Einstellungen speichern</button>
@@ -323,10 +323,22 @@ const LANDS = ['DE','AT','CH','OTHER'];
 const LAND_LABEL = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER:'🌍 Sonst.' };
 
 function fmt(d) { return d.toISOString().split('T')[0]; }
+
+// Dynamischer Timezone-Offset (CEST/CET automatisch)
+function getTZOffset() {
+  const offset = -new Date().getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const h = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+  const m = String(Math.abs(offset) % 60).padStart(2, '0');
+  return sign + h + ':' + m;
+}
+
 function getPaymentFee(country, total) { return (total * (country === 'CH' ? 0.042 : 0.027)) + 0.30; }
+
+// CH = 0% USt (Export, keine Schweizer Mehrwertsteuerpflicht)
 function getUstRate(country) {
   if (country === 'AT') return (parseFloat(config['cfg-ust-at']) || 20) / 100;
-  if (country === 'CH') return (parseFloat(config['cfg-ust-ch']) || 8.1) / 100;
+  if (country === 'CH') return 0;
   return (parseFloat(config['cfg-ust-de']) || 19) / 100;
 }
 
@@ -354,8 +366,8 @@ function getCostForOrder(countryCode, qty, variantId) {
     return p.totalCost !== undefined ? p.totalCost : (p.cost !== undefined ? p.cost : 0);
   }
 
+  // parseInt auf beiden Seiten -> verhindert "2" === 2 Type-Mismatch Bug
   function findEntry(pool) {
-    // parseInt on both sides to prevent "2" === 2 type mismatch
     const exact = pool.find(p => parseInt(p.qty) === qty);
     if (exact) return cost(exact);
     const lower = pool.filter(p => parseInt(p.qty) <= qty).sort((a,b) => parseInt(b.qty) - parseInt(a.qty));
@@ -386,7 +398,7 @@ function loadState() {
   try { bundles = JSON.parse(localStorage.getItem('femorea_bundles') || '[]'); } catch(e) {}
   try { shopifyProductCache = JSON.parse(localStorage.getItem('femorea_shopify_products') || '[]'); } catch(e) {}
   try { activeProductIds = new Set(JSON.parse(localStorage.getItem('femorea_active_products') || '[]')); } catch(e) {}
-  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at','cfg-ust-ch'].forEach(id => {
+  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at'].forEach(id => {
     const el = document.getElementById(id); if (el && config[id] !== undefined) el.value = config[id];
   });
   renderSavedProducts(); renderAdHistory('meta'); renderAdHistory('tiktok');
@@ -400,7 +412,7 @@ function loadState() {
 }
 
 function saveConfig() {
-  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at','cfg-ust-ch'].forEach(id => {
+  ['cfg-shopify-domain','cfg-shopify-token','cfg-tiktok-token','cfg-tiktok-advertiser','cfg-meta-token','cfg-meta-account','cfg-ust-de','cfg-ust-at'].forEach(id => {
     const el = document.getElementById(id); if (el) config[id] = el.value;
   });
   localStorage.setItem('femorea_config', JSON.stringify(config));
@@ -519,7 +531,13 @@ function getAdCostsForRange(platform, from, to) {
 async function fetchShopifyOrders(from, to) {
   const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
   if (!domain || !token) return { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {} };
-  const params = new URLSearchParams({ shop: domain, token, path: 'orders.json', status: 'any', created_at_min: from+'T00:00:00+01:00', created_at_max: to+'T23:59:59+01:00', limit: '250', financial_status: 'paid' });
+  const tz = getTZOffset();
+  const params = new URLSearchParams({
+    shop: domain, token, path: 'orders.json', status: 'any',
+    created_at_min: from+'T00:00:00'+tz,
+    created_at_max: to+'T23:59:59'+tz,
+    limit: '250', financial_status: 'paid'
+  });
   const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify Fehler: ' + resp.status);
   const data = await resp.json();
@@ -531,16 +549,20 @@ async function fetchShopifyOrders(from, to) {
     const ustRate = getUstRate(country);
     const orderUst = total * (ustRate / (1 + ustRate));
     const orderFees = getPaymentFee(country, total);
-    let orderCogs = 0;
+
+    // Gleiche Varianten zusammenzählen (für korrekte Qty-Staffelpreise)
     const itemsByVariant = {};
     (order.line_items || []).forEach(item => {
       const vid = String(item.variant_id);
-      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: item.variant_id };
-      itemsByVariant[vid].qty += item.quantity;
+      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: String(item.variant_id) };
+      itemsByVariant[vid].qty += parseInt(item.quantity) || 1;
     });
+
+    let orderCogs = 0;
     Object.values(itemsByVariant).forEach(item => {
       orderCogs += getCostForOrder(country, item.qty, item.variant_id);
     });
+
     revenue += total; cogs += orderCogs; fees += orderFees; ust += orderUst;
     if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0 };
     byCountry[country].revenue += total; byCountry[country].cogs += orderCogs;
@@ -589,7 +611,7 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   document.getElementById('c-fees').textContent = '– ' + f(shopify.fees);
   document.getElementById('c-ust').textContent = f(shopify.ust);
   const sub = document.getElementById('ust-rates-sub');
-  if (sub) sub.textContent = `DE ${config['cfg-ust-de']||19}% | AT ${config['cfg-ust-at']||20}% | CH ${config['cfg-ust-ch']||8.1}%`;
+  if (sub) sub.textContent = `DE ${config['cfg-ust-de']||19}% | AT ${config['cfg-ust-at']||20}% | CH 0%`;
   const pe = document.getElementById('c-profit');
   pe.textContent = f(netProfit); pe.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
   document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
@@ -601,13 +623,14 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     countries.map(([code,d]) => {
       const info = ci[code] || {flag:'🌍',name:code};
       const profit = d.revenue - d.cogs - d.fees - d.ust;
-      const ustPct = code==='AT'?(config['cfg-ust-at']||20):code==='CH'?(config['cfg-ust-ch']||8.1):(config['cfg-ust-de']||19);
+      const ustPct = code==='AT'?(config['cfg-ust-at']||20):code==='CH'?0:(config['cfg-ust-de']||19);
+      const feeRate = code==='CH'?'4.2%':'2.7%';
       return `<div class="country-card">
         <h4><span class="flag">${info.flag}</span>${info.name} <span style="font-size:0.7rem;color:#666;font-weight:400">(${d.orders} Bestellungen)</span></h4>
         <div class="row"><span>Umsatz</span><span>${f(d.revenue)}</span></div>
         <div class="row"><span>Produktkosten</span><span style="color:#e17055">– ${f(d.cogs)}</span></div>
-        <div class="row"><span>Payments (${code==='CH'?'4.2%':'2.7%'} + 0,30€)</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
-        <div class="row"><span>USt (${ustPct}%)</span><span style="color:#fdcb6e">– ${f(d.ust)}</span></div>
+        <div class="row"><span>Payments (${feeRate} + 0,30€)</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
+        <div class="row"><span>USt (${ustPct}%)</span><span style="color:#fdcb6e">${d.ust > 0 ? '– '+f(d.ust) : '0,00 €'}</span></div>
         <div class="row" style="border-top:1px solid #2a2a3a;margin-top:6px;padding-top:6px;font-weight:700">
           <span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span>
         </div>
@@ -643,7 +666,7 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
       return `<tr><td><strong>${o.id}</strong></td><td style="color:#888">${o.date}</td>
         <td><span class="badge ${bc[o.country]||'badge-other'}">${fl2[o.country]||'🌍'} ${o.country}</span></td>
         <td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td>
-        <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">– ${f(o.ust)}</td>
+        <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">${o.ust > 0 ? '– '+f(o.ust) : '0,00 €'}</td>
         <td style="color:${p>=0?'#00b894':'#e17055'};font-weight:700">${f(p)}</td></tr>`;
     }).join('') + '</tbody></table></div>';
 }
@@ -707,20 +730,17 @@ function confirmProductSelection() {
 function renderShopifyProductList(items) {
   const container = document.getElementById('shopify-product-list');
   if (!items.length) { container.innerHTML = '<div class="empty-state">Keine Produkte ausgewählt.</div>'; return; }
-
   const savedMap = {};
   products.forEach(p => {
     if (p.productId && p.land) {
       savedMap[`${p.productId}_${p.qty}_${p.land}`] = p.totalCost !== undefined ? p.totalCost : (p.cost || 0);
     }
   });
-
   const groups = groupByProduct(items);
   container.innerHTML = groups.map(g => {
     const pid = String(g.productId);
     const variantList = g.variants.map(v => v.variantTitle).filter(Boolean);
     const variantInfo = variantList.length ? variantList.slice(0,5).join(', ') + (variantList.length>5?' …':'') : '–';
-
     const landRows = LANDS.map(land => {
       const l1 = savedMap[`${pid}_1_${land}`] !== undefined ? savedMap[`${pid}_1_${land}`].toFixed(2) : '';
       const l2 = savedMap[`${pid}_2_${land}`] !== undefined ? savedMap[`${pid}_2_${land}`].toFixed(2) : '';
@@ -735,7 +755,6 @@ function renderShopifyProductList(items) {
           class="land-input${l3?' filled':''}" oninput="this.className='land-input'+(this.value?' filled':'')" />
       </div>`;
     }).join('');
-
     return `<div class="prod-item">
       <div style="margin-bottom:10px;">
         <div class="prod-name">${g.title}</div>
@@ -787,7 +806,6 @@ function saveAllProducts() {
     ? shopifyProductCache.filter(p => activeProductIds.has(String(p.productId)))
     : shopifyProductCache;
   const groups = groupByProduct(activeItems);
-
   groups.forEach(g => {
     const pid = String(g.productId);
     LANDS.forEach(land => {
@@ -799,7 +817,6 @@ function saveAllProducts() {
       });
     });
   });
-
   document.querySelectorAll('[id^="manual-"]').forEach(row => {
     const id = row.id;
     const n = document.getElementById(id+'-name');
@@ -813,7 +830,6 @@ function saveAllProducts() {
       }
     }
   });
-
   products = newProducts;
   localStorage.setItem('femorea_products', JSON.stringify(products));
   renderSavedProducts();
