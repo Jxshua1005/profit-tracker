@@ -550,16 +550,20 @@ async function fetchShopifyOrders(from, to) {
     const orderUst = total * (ustRate / (1 + ustRate));
     const orderFees = getPaymentFee(country, total);
 
-    // Gleiche Varianten zusammenzählen (für korrekte Qty-Staffelpreise)
-    const itemsByVariant = {};
+    // Gleiche Produkte zusammenzählen (by productId, nicht variantId!)
+    // Wichtig: 2x Tasche in verschiedenen Farben = qty 2 auf Produktebene
+    const itemsByProduct = {};
     (order.line_items || []).forEach(item => {
+      // Finde productId via Cache, fallback auf variant_id
+      const cached = shopifyProductCache.find(p => p.variantId === String(item.variant_id));
+      const pid = cached ? String(cached.productId) : String(item.variant_id);
       const vid = String(item.variant_id);
-      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: String(item.variant_id) };
-      itemsByVariant[vid].qty += parseInt(item.quantity) || 1;
+      if (!itemsByProduct[pid]) itemsByProduct[pid] = { qty: 0, variant_id: vid, productId: pid };
+      itemsByProduct[pid].qty += parseInt(item.quantity) || 1;
     });
 
     let orderCogs = 0;
-    Object.values(itemsByVariant).forEach(item => {
+    Object.values(itemsByProduct).forEach(item => {
       orderCogs += getCostForOrder(country, item.qty, item.variant_id);
     });
 
