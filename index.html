@@ -559,14 +559,18 @@ async function fetchShopifyOrders(from, to) {
     shop: domain, token, path: 'orders.json', status: 'any',
     created_at_min: from+'T00:00:00'+tz,
     created_at_max: to+'T23:59:59'+tz,
-    limit: '250', financial_status: 'paid'
+    limit: '250', financial_status: 'any'
   });
   const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify Fehler: ' + resp.status);
   const data = await resp.json();
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
   const byCountry = {};
-  const orders = (data.orders || []).map(order => {
+  const INCLUDE_STATUSES = ['paid','pending','partially_paid','authorized'];
+  const orders = (data.orders || []).filter(order => {
+    const fs = order.financial_status || '';
+    return INCLUDE_STATUSES.includes(fs);
+  }).map(order => {
     const total = parseFloat(order.total_price);
     const country = order.shipping_address?.country_code || 'DE';
     const ustRate = getUstRate(country);
@@ -598,7 +602,7 @@ async function fetchShopifyOrders(from, to) {
     if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0 };
     byCountry[country].revenue += total; byCountry[country].cogs += orderCogs;
     byCountry[country].fees += orderFees; byCountry[country].ust += orderUst; byCountry[country].orders++;
-    return { id: order.name, date: order.created_at.split('T')[0], total, country, cogs: orderCogs, ust: orderUst, fees: orderFees };
+    return { id: order.name, date: order.created_at.split('T')[0], total, country, cogs: orderCogs, ust: orderUst, fees: orderFees, financial_status: order.financial_status || 'paid' };
   });
   return { orders, revenue, cogs, fees, ust, byCountry };
 }
@@ -694,7 +698,7 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   document.getElementById('orders-table').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Payments</th><th>USt</th><th>Profit (ohne Ads)</th></tr></thead><tbody>' +
     shopify.orders.map(o => {
       const p = o.total - o.cogs - o.fees - o.ust;
-      return `<tr><td><strong>${o.id}</strong></td><td style="color:#888">${o.date}</td>
+      return `<tr><td><strong>${o.id}</strong>${o.financial_status && o.financial_status !== 'paid' ? '<br><span style="font-size:0.65rem;padding:1px 6px;border-radius:10px;background:#fdcb6e22;color:#fdcb6e;font-weight:700;">' + (o.financial_status === 'pending' ? '⏳ Offen' : o.financial_status === 'partially_paid' ? '⚠️ Teilbezahlt' : o.financial_status === 'authorized' ? '🔒 Autorisiert' : o.financial_status) + '</span>' : ''}</td><td style="color:#888">${o.date}</td>
         <td><span class="badge ${bc[o.country]||'badge-other'}">${fl2[o.country]||'🌍'} ${o.country}</span></td>
         <td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td>
         <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">${o.ust > 0 ? '– '+f(o.ust) : '0,00 €'}</td>
