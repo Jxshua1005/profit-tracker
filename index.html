@@ -233,8 +233,10 @@
         </div>
         <div id="bundle-list"><div class="empty-state" style="padding:16px">Noch keine Bundles</div></div>
       </div>
-      <div style="margin-top:18px;border-top:1px solid #2a2a3a;padding-top:16px;">
+      <div style="margin-top:18px;border-top:1px solid #2a2a3a;padding-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-success" onclick="saveAllProducts()">💾 Alle Produktkosten speichern</button>
+        <button class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#ccc;" onclick="exportBackup()">⬇️ Export/Backup JSON</button>
+        <label class="btn btn-sm" style="background:#18181f;border:1px solid #2a2a3a;color:#ccc;cursor:pointer;">⬆️ Import JSON<input type="file" accept="application/json" style="display:none" onchange="importBackup(event)"></label>
       </div>
     </div>
     <div class="panel"><h3>Gespeicherte Produktkosten</h3><div id="saved-products-table"><div class="empty-state">Noch keine Produkte</div></div></div>
@@ -736,7 +738,6 @@ function saveAllProducts() {
   });
   products = newProducts;
   localStorage.setItem('femorea_products', JSON.stringify(products));
-  localStorage.setItem('femorea_variant_mode', JSON.stringify(variantModeByProduct));
   renderSavedProducts();
   alert('✓ '+products.length+' Produktkonfigurationen gespeichert!');
 }
@@ -797,6 +798,46 @@ window.onload = () => {
   document.getElementById('tiktok-date').value = today;
   quickFilter('today');
 };
+
+function exportBackup() {
+  const data = {
+    config,
+    products,
+    metaCosts,
+    tiktokCosts,
+    bundles,
+    activeProductIds: [...activeProductIds],
+    shopifyProductCache,
+    variantModeByProduct: typeof variantModeByProduct !== 'undefined' ? variantModeByProduct : {}
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'femorea_backup.json';
+  a.click();
+}
+
+function importBackup(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (d.config) localStorage.setItem('femorea_config', JSON.stringify(d.config));
+      if (d.products) localStorage.setItem('femorea_products', JSON.stringify(d.products));
+      if (d.metaCosts) localStorage.setItem('femorea_meta', JSON.stringify(d.metaCosts));
+      if (d.tiktokCosts) localStorage.setItem('femorea_tiktok', JSON.stringify(d.tiktokCosts));
+      if (d.bundles) localStorage.setItem('femorea_bundles', JSON.stringify(d.bundles));
+      if (d.activeProductIds) localStorage.setItem('femorea_active_products', JSON.stringify(d.activeProductIds));
+      if (d.shopifyProductCache) localStorage.setItem('femorea_shopify_products', JSON.stringify(d.shopifyProductCache));
+      if (d.variantModeByProduct) localStorage.setItem('femorea_variant_mode', JSON.stringify(d.variantModeByProduct));
+      location.reload();
+    } catch(err) { alert('Backup konnte nicht importiert werden'); }
+  };
+  r.readAsText(file);
+}
+
 </script>
 </body>
 </html>
