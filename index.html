@@ -216,10 +216,11 @@
       </div>
       <div id="shopify-product-list"></div>
       <div class="bundle-section">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <h3 style="margin:0;">📦 Bundles</h3>
           <button class="btn btn-primary btn-sm" onclick="openBundleCreator()">+ Bundle erstellen</button>
         </div>
+        <p style="font-size:0.78rem;color:#666;margin-bottom:12px;">Definiere Bundles mit Mengen pro Produkt und Supplier-Gesamtpreisen je Land.</p>
         <div id="bundle-list"><div class="empty-state" style="padding:16px">Noch keine Bundles</div></div>
       </div>
       <div style="margin-top:18px;border-top:1px solid #2a2a3a;padding-top:16px;">
@@ -298,18 +299,40 @@
 </div>
 
 <!-- Bundle Modal -->
-<div id="bundle-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center;">
-  <div style="background:#18181f;border:1px solid #2a2a3a;border-radius:14px;padding:28px;width:90%;max-width:520px;">
-    <h3 style="margin-bottom:16px;color:#fff;">📦 Bundle erstellen</h3>
-    <div class="form-group" style="margin-bottom:12px;">
-      <label>Bundle Name</label>
-      <input type="text" id="bundle-name-input" placeholder="z.B. Starter Set Bundle" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:9px 12px;color:#fff;font-size:0.88rem;outline:none;width:100%;" />
+<div id="bundle-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:100;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#18181f;border:1px solid #2a2a3a;border-radius:14px;padding:24px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="color:#fff;margin:0;">📦 Bundle erstellen</h3>
+      <button class="btn btn-sm" style="background:#2a2a3a;color:#888;" onclick="closeBundleModal()">✕</button>
     </div>
-    <p style="font-size:0.78rem;color:#666;margin-bottom:10px;">Produkte auswählen:</p>
-    <div id="bundle-product-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
+
+    <div class="form-group">
+      <label>Bundle Name</label>
+      <input type="text" id="bundle-name-input" placeholder="z.B. Starter Set (Geschirr + Leine)" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:9px 12px;color:#fff;font-size:0.88rem;outline:none;width:100%;" />
+    </div>
+
+    <div>
+      <p style="font-size:0.78rem;color:#888;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Produkte & Mengen im Bundle</p>
+      <div id="bundle-product-checkboxes" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <div>
+      <p style="font-size:0.78rem;color:#888;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Supplier Gesamtpreise pro Land</p>
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #2a2a3a;">
+        <div></div>
+        <div style="font-size:0.68rem;color:#6c5ce7;text-align:center;font-weight:700;">1x Bundle</div>
+        <div style="font-size:0.68rem;color:#00b894;text-align:center;font-weight:700;">2x Bundle</div>
+        <div style="font-size:0.68rem;color:#fdcb6e;text-align:center;font-weight:700;">3x+ Bundle</div>
+        <div style="font-size:0.68rem;color:#888;text-align:center;">Notiz</div>
+      </div>
+      <div id="bundle-land-prices">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #2a2a3a;padding-top:14px;">
       <button class="btn" style="background:#2a2a3a;color:#888;" onclick="closeBundleModal()">Abbrechen</button>
-      <button class="btn btn-success" onclick="saveBundle()">Speichern</button>
+      <button class="btn btn-success" onclick="saveBundle()">💾 Bundle speichern</button>
     </div>
   </div>
 </div>
@@ -536,14 +559,18 @@ async function fetchShopifyOrders(from, to) {
     shop: domain, token, path: 'orders.json', status: 'any',
     created_at_min: from+'T00:00:00'+tz,
     created_at_max: to+'T23:59:59'+tz,
-    limit: '250', financial_status: 'paid'
+    limit: '250', financial_status: 'any'
   });
   const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify Fehler: ' + resp.status);
   const data = await resp.json();
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
   const byCountry = {};
-  const orders = (data.orders || []).map(order => {
+  const INCLUDE_STATUSES = ['paid','pending','partially_paid','authorized'];
+  const orders = (data.orders || []).filter(order => {
+    const fs = order.financial_status || '';
+    return INCLUDE_STATUSES.includes(fs);
+  }).map(order => {
     const total = parseFloat(order.total_price);
     const country = order.shipping_address?.country_code || 'DE';
     const ustRate = getUstRate(country);
@@ -554,20 +581,26 @@ async function fetchShopifyOrders(from, to) {
     const itemsByVariant = {};
     (order.line_items || []).forEach(item => {
       const vid = String(item.variant_id);
-      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: String(item.variant_id) };
+      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: vid };
       itemsByVariant[vid].qty += parseInt(item.quantity) || 1;
     });
 
     let orderCogs = 0;
-    Object.values(itemsByVariant).forEach(item => {
-      orderCogs += getCostForOrder(country, item.qty, item.variant_id);
-    });
+    // Erst prüfen ob ein Bundle passt -> Bundle-Preis hat Vorrang
+    const bundleMatch = getBundleCost(order);
+    if (bundleMatch) {
+      orderCogs = bundleMatch.cost;
+    } else {
+      Object.values(itemsByVariant).forEach(item => {
+        orderCogs += getCostForOrder(country, item.qty, item.variant_id);
+      });
+    }
 
     revenue += total; cogs += orderCogs; fees += orderFees; ust += orderUst;
     if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0 };
     byCountry[country].revenue += total; byCountry[country].cogs += orderCogs;
     byCountry[country].fees += orderFees; byCountry[country].ust += orderUst; byCountry[country].orders++;
-    return { id: order.name, date: order.created_at.split('T')[0], total, country, cogs: orderCogs, ust: orderUst, fees: orderFees };
+    return { id: order.name, date: order.created_at.split('T')[0], total, country, cogs: orderCogs, ust: orderUst, fees: orderFees, financial_status: order.financial_status || 'paid' };
   });
   return { orders, revenue, cogs, fees, ust, byCountry };
 }
@@ -663,7 +696,7 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   document.getElementById('orders-table').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Payments</th><th>USt</th><th>Profit (ohne Ads)</th></tr></thead><tbody>' +
     shopify.orders.map(o => {
       const p = o.total - o.cogs - o.fees - o.ust;
-      return `<tr><td><strong>${o.id}</strong></td><td style="color:#888">${o.date}</td>
+      return `<tr><td><strong>${o.id}</strong>${o.financial_status && o.financial_status !== 'paid' ? '<br><span style="font-size:0.65rem;padding:1px 6px;border-radius:10px;background:#fdcb6e22;color:#fdcb6e;font-weight:700;">' + (o.financial_status === 'pending' ? '⏳ Offen' : o.financial_status === 'partially_paid' ? '⚠️ Teilbezahlt' : o.financial_status === 'authorized' ? '🔒 Autorisiert' : o.financial_status) + '</span>' : ''}</td><td style="color:#888">${o.date}</td>
         <td><span class="badge ${bc[o.country]||'badge-other'}">${fl2[o.country]||'🌍'} ${o.country}</span></td>
         <td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td>
         <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">${o.ust > 0 ? '– '+f(o.ust) : '0,00 €'}</td>
@@ -864,40 +897,177 @@ function renderSavedProducts() {
     }).join('') + '</tbody></table>';
 }
 
-function openBundleCreator() {
+function openBundleCreator(editIdx) {
   const groups = groupByProduct(shopifyProductCache);
-  document.getElementById('bundle-product-checkboxes').innerHTML = groups.map(g =>
-    `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.84rem;color:#ccc;">
-      <input type="checkbox" value="${g.productId}" style="accent-color:#6c5ce7;" /> ${g.title}
-    </label>`).join('');
-  document.getElementById('bundle-name-input').value = '';
+  const editing = editIdx !== undefined ? bundles[editIdx] : null;
+
+  document.getElementById('bundle-name-input').value = editing ? editing.name : '';
+  document.getElementById('bundle-modal').dataset.editIdx = editIdx !== undefined ? editIdx : '';
+
+  // Product checkboxes with qty inputs
+  document.getElementById('bundle-product-checkboxes').innerHTML = groups.map(g => {
+    const pid = String(g.productId);
+    const existingQty = editing ? (editing.productQtys?.[pid] || 0) : 0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;">
+      <input type="checkbox" id="bpck-${pid}" value="${pid}" ${existingQty > 0 ? 'checked' : ''} style="accent-color:#6c5ce7;width:15px;height:15px;flex-shrink:0;" onchange="updateBundleQtyVis('${pid}')" />
+      <label for="bpck-${pid}" style="flex:1;font-size:0.84rem;color:#ccc;cursor:pointer;">${g.title}</label>
+      <div style="display:flex;align-items:center;gap:6px;" id="bqty-wrap-${pid}">
+        <span style="font-size:0.72rem;color:#666;">Menge:</span>
+        <input type="number" min="1" max="99" value="${existingQty > 0 ? existingQty : 1}" id="bqty-${pid}"
+          style="width:52px;background:#18181f;border:1px solid #2a2a3a;border-radius:6px;padding:4px 7px;color:#fff;font-size:0.84rem;outline:none;text-align:center;" />
+      </div>
+    </div>`;
+  }).join('');
+
+  // Render land price rows
+  renderBundleLandPrices(editing);
   document.getElementById('bundle-modal').style.display = 'flex';
 }
+
+function updateBundleQtyVis(pid) {
+  // no-op, qty always visible for simplicity
+}
+
+function renderBundleLandPrices(editing) {
+  const LANDS_B = ['DE','AT','CH','OTHER'];
+  const LAND_LBL = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER:'🌍 Sonst.' };
+  document.getElementById('bundle-land-prices').innerHTML = LANDS_B.map(land => {
+    const ep = editing?.landPrices?.[land] || {};
+    const v1 = ep[1] !== undefined ? ep[1].toFixed(2) : '';
+    const v2 = ep[2] !== undefined ? ep[2].toFixed(2) : '';
+    const v3 = ep[3] !== undefined ? ep[3].toFixed(2) : '';
+    const note = ep.note || '';
+    return `<div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr 1fr;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #1a1a24;">
+      <div style="font-size:0.8rem;color:#888;font-weight:600;">${LAND_LBL[land]}</div>
+      <input type="number" min="0" step="0.01" value="${v1}" id="bprice-${land}-1" placeholder="–"
+        style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.82rem;outline:none;text-align:center;width:100%;" />
+      <input type="number" min="0" step="0.01" value="${v2}" id="bprice-${land}-2" placeholder="–"
+        style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.82rem;outline:none;text-align:center;width:100%;" />
+      <input type="number" min="0" step="0.01" value="${v3}" id="bprice-${land}-3" placeholder="–"
+        style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#fff;font-size:0.82rem;outline:none;text-align:center;width:100%;" />
+      <input type="text" value="${note}" id="bprice-${land}-note" placeholder="z.B. DS24"
+        style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:5px 7px;color:#888;font-size:0.75rem;outline:none;width:100%;" />
+    </div>`;
+  }).join('');
+}
+
 function closeBundleModal() { document.getElementById('bundle-modal').style.display = 'none'; }
+
 function saveBundle() {
   const name = document.getElementById('bundle-name-input').value.trim();
   if (!name) { alert('Bitte Bundle-Name eingeben.'); return; }
-  const checked = [...document.querySelectorAll('#bundle-product-checkboxes input:checked')].map(i => i.value);
-  if (checked.length < 2) { alert('Mindestens 2 Produkte auswählen.'); return; }
-  const labels = checked.map(id => groupByProduct(shopifyProductCache).find(g => String(g.productId) === id)?.title || id);
-  bundles.push({ name, productIds: checked, labels });
+
+  const groups = groupByProduct(shopifyProductCache);
+  const productQtys = {};
+  const labels = [];
+  groups.forEach(g => {
+    const pid = String(g.productId);
+    const cb = document.getElementById('bpck-'+pid);
+    if (cb?.checked) {
+      const qty = parseInt(document.getElementById('bqty-'+pid)?.value) || 1;
+      productQtys[pid] = qty;
+      labels.push({ pid, title: g.title, qty });
+    }
+  });
+  if (Object.keys(productQtys).length === 0) { alert('Mindestens 1 Produkt auswählen.'); return; }
+
+  const LANDS_B = ['DE','AT','CH','OTHER'];
+  const landPrices = {};
+  LANDS_B.forEach(land => {
+    const p1 = parseFloat(document.getElementById('bprice-'+land+'-1')?.value);
+    const p2 = parseFloat(document.getElementById('bprice-'+land+'-2')?.value);
+    const p3 = parseFloat(document.getElementById('bprice-'+land+'-3')?.value);
+    const note = document.getElementById('bprice-'+land+'-note')?.value || '';
+    landPrices[land] = {};
+    if (!isNaN(p1) && p1 > 0) landPrices[land][1] = p1;
+    if (!isNaN(p2) && p2 > 0) landPrices[land][2] = p2;
+    if (!isNaN(p3) && p3 > 0) landPrices[land][3] = p3;
+    if (note) landPrices[land].note = note;
+  });
+
+  const bundle = { name, productQtys, labels, landPrices };
+  const editIdx = document.getElementById('bundle-modal').dataset.editIdx;
+  if (editIdx !== '') {
+    bundles[parseInt(editIdx)] = bundle;
+  } else {
+    bundles.push(bundle);
+  }
   localStorage.setItem('femorea_bundles', JSON.stringify(bundles));
   renderBundleList(); closeBundleModal();
 }
+
 function deleteBundle(idx) {
   if (!confirm('Bundle löschen?')) return;
   bundles.splice(idx,1); localStorage.setItem('femorea_bundles', JSON.stringify(bundles)); renderBundleList();
 }
+
+function getBundleCost(order) {
+  // Check if any bundle matches this order's products+qtys
+  const country = order.shipping_address?.country_code || 'DE';
+  const land = ['DE','AT','CH','OTHER'].includes(country) ? country : 'OTHER';
+
+  // Build product qty map from order
+  const orderProductQtys = {};
+  (order.line_items || []).forEach(item => {
+    const cached = shopifyProductCache.find(p => p.variantId === String(item.variant_id));
+    const pid = cached ? String(cached.productId) : String(item.variant_id);
+    orderProductQtys[pid] = (orderProductQtys[pid] || 0) + (parseInt(item.quantity) || 1);
+  });
+
+  // Try to find matching bundle (order must contain all bundle products with at least those qtys)
+  let bestBundle = null, bestBundleCount = 0;
+  for (const bundle of bundles) {
+    if (!bundle.productQtys || !bundle.landPrices) continue;
+    const bpids = Object.keys(bundle.productQtys);
+    // Check all bundle products are in order
+    const fits = bpids.every(pid => (orderProductQtys[pid] || 0) >= bundle.productQtys[pid]);
+    if (!fits) continue;
+    // How many times does this bundle fit?
+    const count = Math.min(...bpids.map(pid => Math.floor((orderProductQtys[pid] || 0) / bundle.productQtys[pid])));
+    if (count > bestBundleCount) { bestBundle = bundle; bestBundleCount = count; }
+  }
+
+  if (!bestBundle || bestBundleCount === 0) return null;
+
+  // Find price for land + count
+  const lp = bestBundle.landPrices[land] || bestBundle.landPrices['OTHER'] || {};
+  let price = null;
+  const qkeys = [1,2,3].filter(k => lp[k] !== undefined).sort((a,b) => b-a);
+  for (const k of qkeys) {
+    if (bestBundleCount >= k) { price = lp[k]; break; }
+  }
+  if (price === null && qkeys.length) price = lp[qkeys[qkeys.length-1]];
+  if (price === null) return null;
+
+  return { cost: price * bestBundleCount, bundle: bestBundle, count: bestBundleCount };
+}
+
 function renderBundleList() {
   const el = document.getElementById('bundle-list');
   if (!bundles.length) { el.innerHTML = '<div class="empty-state" style="padding:16px">Noch keine Bundles</div>'; return; }
-  el.innerHTML = bundles.map((b,idx) => `<div class="bundle-row">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div class="bundle-name">📦 ${b.name}</div>
-      <button class="btn btn-danger btn-sm" onclick="deleteBundle(${idx})">✕</button>
-    </div>
-    <div class="bundle-products">${b.labels.map(l=>`<span class="bundle-tag">${l}</span>`).join('')}</div>
-  </div>`).join('');
+  const LAND_LBL = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER:'🌍 Sonst.' };
+  el.innerHTML = bundles.map((b, idx) => {
+    const prodList = (b.labels || []).map(l => `<span class="bundle-tag">${l.qty}× ${l.title}</span>`).join('');
+    const priceRows = Object.entries(b.landPrices || {}).filter(([,lp]) => lp[1] || lp[2] || lp[3]).map(([land, lp]) =>
+      `<div style="display:flex;gap:12px;align-items:center;padding:3px 0;font-size:0.75rem;color:#888;">
+        <span style="width:62px;">${LAND_LBL[land]||land}</span>
+        ${lp[1] !== undefined ? `<span style="color:#6c5ce7">1x: ${lp[1].toFixed(2)}€</span>` : ''}
+        ${lp[2] !== undefined ? `<span style="color:#00b894">2x: ${lp[2].toFixed(2)}€</span>` : ''}
+        ${lp[3] !== undefined ? `<span style="color:#fdcb6e">3x+: ${lp[3].toFixed(2)}€</span>` : ''}
+        ${lp.note ? `<span style="color:#555">(${lp.note})</span>` : ''}
+      </div>`).join('');
+    return `<div class="bundle-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="bundle-name">📦 ${b.name}</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm" style="background:#2a2a3a;color:#a29bfe;" onclick="openBundleCreator(${idx})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBundle(${idx})">✕</button>
+        </div>
+      </div>
+      <div class="bundle-products" style="margin-bottom:8px;">${prodList}</div>
+      <div style="border-top:1px solid #1a1a24;padding-top:8px;">${priceRows || '<span style="font-size:0.72rem;color:#555;">Noch keine Preise eingetragen</span>'}</div>
+    </div>`;
+  }).join('');
 }
 
 window.onload = () => {
