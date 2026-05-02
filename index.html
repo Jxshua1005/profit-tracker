@@ -620,7 +620,6 @@ async function fetchTikTokAdSpend(from, to) {
 async function fetchMetaAdSpend(from, to) {
   const token = config['cfg-meta-token'], accountId = config['cfg-meta-account'];
   if (!token || !accountId) return { spend: 0 };
-
   try {
     const params = new URLSearchParams({
       meta: '1',
@@ -629,29 +628,12 @@ async function fetchMetaAdSpend(from, to) {
       start_date: from,
       end_date: to
     });
-
     const resp = await fetch(`${PROXY}?${params}`);
-    const data = await resp.json();
-
-    console.log('META FULL RESPONSE:', JSON.stringify(data, null, 2));
-    console.log('META STATUS:', resp.status);
-    console.log('META FROM/TO:', from, to);
-    console.log('META ACCOUNT:', accountId);
-
-    if (data.error) {
-      console.error('META API ERROR:', data.error);
-      return { spend: 0 };
-    }
-
     if (!resp.ok) return { spend: 0 };
-
-    return {
-      spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0)
-    };
-  } catch (e) {
-    console.error('META ERROR:', e);
-    return { spend: 0 };
-  }
+    const data = await resp.json();
+    if (data.error) return { spend: 0 };
+    return { spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0) };
+  } catch(e) { return { spend: 0 }; }
 }
 function renderDashboard(shopify, tiktokSpend, metaSpend) {
   const totalAds = tiktokSpend + metaSpend;
