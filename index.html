@@ -506,9 +506,16 @@ async function loadDashboard() {
     const [shopifyData, tiktokApi, metaApi] = await Promise.all([
       fetchShopifyOrders(from, to), fetchTikTokAdSpend(from, to), fetchMetaAdSpend(from, to)
     ]);
-    const metaSpend = metaApi.spend > 0 ? metaApi.spend : getAdCostsForRange('meta', from, to);
-    const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
-    renderDashboard(shopifyData, tiktokSpend, metaSpend);
+    const metaSpend = metaApi && metaApi.spend !== null
+  ? metaApi.spend
+  : getAdCostsForRange('meta', from, to);
+
+if (metaApi?.error) {
+  console.error('META FAILED:', metaApi.error, metaApi.raw || '');
+}
+
+const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
+renderDashboard(shopifyData, tiktokSpend, metaSpend);
   } catch(e) { alert('Fehler: ' + e.message); console.error(e); }
   finally { spinner.style.display = 'none'; }
 }
@@ -619,7 +626,8 @@ async function fetchTikTokAdSpend(from, to) {
 
 async function fetchMetaAdSpend(from, to) {
   const token = config['cfg-meta-token'], accountId = config['cfg-meta-account'];
-  if (!token || !accountId) return { spend: 0 };
+  if (!token || !accountId) return { spend: null, error: 'missing_config' };
+
   try {
     const params = new URLSearchParams({
       meta: '1',
@@ -628,12 +636,20 @@ async function fetchMetaAdSpend(from, to) {
       start_date: from,
       end_date: to
     });
+
     const resp = await fetch(`${PROXY}?${params}`);
-    if (!resp.ok) return { spend: 0 };
     const data = await resp.json();
-    if (data.error) return { spend: 0 };
-    return { spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0) };
-  } catch(e) { return { spend: 0 }; }
+
+    if (!resp.ok) return { spend: null, error: `http_${resp.status}`, raw: data };
+    if (data.error) return { spend: null, error: data.error.message || 'meta_error', raw: data };
+
+    return {
+      spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0),
+      error: null
+    };
+  } catch (e) {
+    return { spend: null, error: e.message || 'network_error' };
+  }
 }
 function renderDashboard(shopify, tiktokSpend, metaSpend) {
   const totalAds = tiktokSpend + metaSpend;
