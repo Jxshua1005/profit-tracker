@@ -1004,44 +1004,111 @@ function deleteBundle(idx) {
 }
 
 function getBundleCost(order) {
-  // Check if any bundle matches this order's products+qtys
   const country = order.shipping_address?.country_code || 'DE';
   const land = ['DE','AT','CH','OTHER'].includes(country) ? country : 'OTHER';
 
-  // Build product qty map from order
-  const orderProductQtys = {};
+  // Produkt-Mengen aus der Bestellung aufbauen (variantId -> productId mapping)
+  const orderQtys = {};
   (order.line_items || []).forEach(item => {
     const cached = shopifyProductCache.find(p => p.variantId === String(item.variant_id));
     const pid = cached ? String(cached.productId) : String(item.variant_id);
-    orderProductQtys[pid] = (orderProductQtys[pid] || 0) + (parseInt(item.quantity) || 1);
+    orderQtys[pid] = (orderQtys[pid] || 0) + (parseInt(item.quantity) || 1);
   });
 
-  // Try to find matching bundle (order must contain all bundle products with at least those qtys)
-  let bestBundle = null, bestBundleCount = 0;
-  for (const bundle of bundles) {
-    if (!bundle.productQtys || !bundle.landPrices) continue;
-    const bpids = Object.keys(bundle.productQtys);
-    // Check all bundle products are in order
-    const fits = bpids.every(pid => (orderProductQtys[pid] || 0) >= bundle.productQtys[pid]);
-    if (!fits) continue;
-    // How many times does this bundle fit?
-    const count = Math.min(...bpids.map(pid => Math.floor((orderProductQtys[pid] || 0) / bundle.productQtys[pid])));
-    if (count > bestBundleCount) { bestBundle = bundle; bestBundleCount = count; }
+  // Hilfsfunktion: Preis für ein Bundle bei gegebenem Count aus landPrices
+  function getBundlePrice(bundle, count) {
+    const lp = bundle.landPrices[land] || bundle.landPrices['OTHER'] || {};
+    const qkeys = [1, 2, 3].filter(k => lp[k] !== undefined).sort((a, b) => b - a);
+    for (const k of qkeys) {
+      if (count >= k) return lp[k];
+    }
+    return qkeys.length ? lp[qkeys[qkeys.length - 1]] : null;
   }
 
-  if (!bestBundle || bestBundleCount === 0) return null;
+  // Greedy-Algorithmus: Wende Bundles iterativ an, bevorzuge spezifischste (meiste Produkte)
+  // Sortiere Bundles nach Anzahl verschiedener Produkte (absteigend = spezifischste zuerst)
+  const sortedBundles = [...bundles]
+    .filter(b => b.productQtys && b.landPrices)
+    .sort((a, b) => Object.keys(b.productQtys).length - Object.keys(a.productQtys).length);
 
-  // Find price for land + count
-  const lp = bestBundle.landPrices[land] || bestBundle.landPrices['OTHER'] || {};
-  let price = null;
-  const qkeys = [1,2,3].filter(k => lp[k] !== undefined).sort((a,b) => b-a);
-  for (const k of qkeys) {
-    if (bestBundleCount >= k) { price = lp[k]; break; }
+  // Versuche beste Gesamtkosten durch rekursive Suche zu finden
+  // remainingQtys = noch nicht durch Bundles abgedeckte Mengen
+  function calcBestCost(remaining, depth) {
+    if (depth > 20) return null; // Sicherheitslimit
+
+    // Prüfe ob noch Produkte übrig sind
+    const hasRemaining = Object.values(remaining).some(q => q > 0);
+    if (!hasRemaining) return { cost: 0, breakdown: [] };
+
+    let bestResult = null;
+
+    for (const bundle of sortedBundles) {
+      const bpids = Object.keys(bundle.productQtys);
+
+      // Passt dieses Bundle in die verbleibenden Mengen?
+      const fits = bpids.every(pid => (remaining[pid] || 0) >= bundle.productQtys[pid]);
+      if (!fits) continue;
+
+      // Wie oft passt es maximal rein?
+      const maxCount = Math.min(...bpids.map(pid =>
+        Math.floor((remaining[pid] || 0) / bundle.productQtys[pid])
+      ));
+      if (maxCount < 1) continue;
+
+      // Probiere alle möglichen Counts (1 bis maxCount)
+      for (let count = maxCount; count >= 1; count--) {
+        const price = getBundlePrice(bundle, count);
+        if (price === null) continue;
+
+        // Reduziere verbleibende Mengen
+        const newRemaining = { ...remaining };
+        bpids.forEach(pid => {
+          newRemaining[pid] = (newRemaining[pid] || 0) - bundle.productQtys[pid] * count;
+        });
+
+        // Berechne Kosten für den Rest rekursiv
+        const restResult = calcBestCost(newRemaining, depth + 1);
+
+        // Wenn Rest nicht durch Bundles abgedeckt werden kann: Einzelproduktpreise nehmen
+        let restCost = 0;
+        const restBreakdown = [];
+        if (restResult !== null) {
+          restCost = restResult.cost;
+          restBreakdown.push(...restResult.breakdown);
+        } else {
+          // Rest mit Einzelproduktpreisen berechnen
+          Object.entries(newRemaining).forEach(([pid, qty]) => {
+            if (qty > 0) {
+              // Einzelpreis aus products[] holen
+              const poolLand = products.filter(p => p.productId === pid && p.land === land);
+              const pool = poolLand.length ? poolLand : products.filter(p => p.productId === pid);
+              if (pool.length) {
+                const sorted = [...pool].sort((a,b) => parseInt(b.qty) - parseInt(a.qty));
+                const entry = sorted.find(p => parseInt(p.qty) <= qty) || sorted[sorted.length - 1];
+                const unitCost = entry.totalCost !== undefined ? entry.totalCost : (entry.cost || 0);
+                restCost += unitCost;
+              }
+            }
+          });
+        }
+
+        const totalCost = price + restCost;
+
+        if (bestResult === null || totalCost < bestResult.cost) {
+          bestResult = {
+            cost: totalCost,
+            breakdown: [{ bundle: bundle.name, count, price }, ...restBreakdown]
+          };
+        }
+      }
+    }
+
+    return bestResult;
   }
-  if (price === null && qkeys.length) price = lp[qkeys[qkeys.length-1]];
-  if (price === null) return null;
 
-  return { cost: price, bundle: bestBundle, count: bestBundleCount };
+  const result = calcBestCost(orderQtys, 0);
+  if (!result || result.cost === 0) return null;
+  return { cost: result.cost, breakdown: result.breakdown };
 }
 
 function renderBundleList() {
