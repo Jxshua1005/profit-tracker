@@ -506,16 +506,9 @@ async function loadDashboard() {
     const [shopifyData, tiktokApi, metaApi] = await Promise.all([
       fetchShopifyOrders(from, to), fetchTikTokAdSpend(from, to), fetchMetaAdSpend(from, to)
     ]);
-    const metaSpend = metaApi && metaApi.spend !== null
-  ? metaApi.spend
-  : getAdCostsForRange('meta', from, to);
-
-if (metaApi?.error) {
-  console.error('META FAILED:', metaApi.error, metaApi.raw || '');
-}
-
-const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
-renderDashboard(shopifyData, tiktokSpend, metaSpend);
+    const metaSpend = metaApi.spend > 0 ? metaApi.spend : getAdCostsForRange('meta', from, to);
+    const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
+    renderDashboard(shopifyData, tiktokSpend, metaSpend);
   } catch(e) { alert('Fehler: ' + e.message); console.error(e); }
   finally { spinner.style.display = 'none'; }
 }
@@ -584,12 +577,14 @@ async function fetchShopifyOrders(from, to) {
     const orderUst = total * (ustRate / (1 + ustRate));
     const orderFees = getPaymentFee(country, total);
 
-    // Gleiche Varianten zusammenzählen (für korrekte Qty-Staffelpreise)
-    const itemsByVariant = {};
+    // Gleiche Produkte zusammenzählen (by productId, nicht variantId!)
+    const itemsByProduct = {};
     (order.line_items || []).forEach(item => {
+      const cached = shopifyProductCache.find(p => p.variantId === String(item.variant_id));
+      const pid = cached ? String(cached.productId) : String(item.variant_id);
       const vid = String(item.variant_id);
-      if (!itemsByVariant[vid]) itemsByVariant[vid] = { qty: 0, variant_id: vid };
-      itemsByVariant[vid].qty += parseInt(item.quantity) || 1;
+      if (!itemsByProduct[pid]) itemsByProduct[pid] = { qty: 0, variant_id: vid, productId: pid };
+      itemsByProduct[pid].qty += parseInt(item.quantity) || 1;
     });
 
     let orderCogs = 0;
@@ -598,7 +593,7 @@ async function fetchShopifyOrders(from, to) {
     if (bundleMatch) {
       orderCogs = bundleMatch.cost;
     } else {
-      Object.values(itemsByVariant).forEach(item => {
+      Object.values(itemsByProduct).forEach(item => {
         orderCogs += getCostForOrder(country, item.qty, item.variant_id);
       });
     }
@@ -626,31 +621,16 @@ async function fetchTikTokAdSpend(from, to) {
 
 async function fetchMetaAdSpend(from, to) {
   const token = config['cfg-meta-token'], accountId = config['cfg-meta-account'];
-  if (!token || !accountId) return { spend: null, error: 'missing_config' };
-
+  if (!token || !accountId) return { spend: 0 };
   try {
-    const params = new URLSearchParams({
-      meta: '1',
-      meta_token: token,
-      account_id: accountId,
-      start_date: from,
-      end_date: to
-    });
-
+    const params = new URLSearchParams({ meta: '1', meta_token: token, account_id: accountId, start_date: from, end_date: to });
     const resp = await fetch(`${PROXY}?${params}`);
+    if (!resp.ok) return { spend: 0 };
     const data = await resp.json();
-
-    if (!resp.ok) return { spend: null, error: `http_${resp.status}`, raw: data };
-    if (data.error) return { spend: null, error: data.error.message || 'meta_error', raw: data };
-
-    return {
-      spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0),
-      error: null
-    };
-  } catch (e) {
-    return { spend: null, error: e.message || 'network_error' };
-  }
+    return { spend: (data.data || []).reduce((sum, row) => sum + parseFloat(row.spend || 0), 0) };
+  } catch(e) { return { spend: 0 }; }
 }
+
 function renderDashboard(shopify, tiktokSpend, metaSpend) {
   const totalAds = tiktokSpend + metaSpend;
   const netProfit = shopify.revenue - shopify.cogs - totalAds - shopify.fees - shopify.ust;
@@ -1061,7 +1041,7 @@ function getBundleCost(order) {
   if (price === null && qkeys.length) price = lp[qkeys[qkeys.length-1]];
   if (price === null) return null;
 
-  return { cost: price * bestBundleCount, bundle: bestBundle, count: bestBundleCount };
+  return { cost: price, bundle: bestBundle, count: bestBundleCount };
 }
 
 function renderBundleList() {
