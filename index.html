@@ -23,6 +23,7 @@
     .card .value.red { color: #e17055; }
     .card .value.yellow { color: #fdcb6e; }
     .card .sub { font-size: 0.72rem; color: #666; margin-top: 4px; }
+    .card.highlight { border-color: #6c5ce7; }
     .panel { background: #18181f; border: 1px solid #2a2a3a; border-radius: 12px; padding: 22px; margin-bottom: 18px; }
     .panel h3 { font-size: 0.88rem; font-weight: 700; margin-bottom: 16px; color: #ccc; text-transform: uppercase; letter-spacing: 0.5px; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
@@ -137,6 +138,7 @@
       <span style="color:#666">bis</span>
       <input type="date" id="date-to" onchange="onDateChange()" />
       <button class="btn btn-primary" id="btn-load" onclick="loadDashboard()">Laden <span id="loading-spinner" style="display:none" class="loading"></span></button>
+      <span id="load-status" style="font-size:0.78rem;color:#888;align-self:center;"></span>
     </div>
     <div class="cards">
       <div class="card"><div class="label">Umsatz Gesamt</div><div class="value" id="c-revenue">–</div><div class="sub" id="c-orders-count">– Bestellungen</div></div>
@@ -144,10 +146,12 @@
       <div class="card"><div class="label">Werbekosten</div><div class="value red" id="c-adspend">–</div><div class="sub"><span id="c-tiktok-sub">TikTok: –</span> | <span id="c-meta-sub">Meta: –</span></div></div>
       <div class="card"><div class="label">Shopify Payments</div><div class="value red" id="c-fees">–</div><div class="sub">2,7% / 4,2% CH + 0,30€</div></div>
       <div class="card"><div class="label">USt gesamt</div><div class="value yellow" id="c-ust">–</div><div class="sub" id="ust-rates-sub">DE 19% | AT 20% | CH 0%</div></div>
-      <div class="card"><div class="label">Netto-Profit</div><div class="value green" id="c-profit">–</div>
+      <div class="card"><div class="label">↩️ Retouren</div><div class="value red" id="c-refunds">–</div><div class="sub" id="c-refunds-sub">– Rückerstattungen</div></div>
+      <div class="card highlight"><div class="label">Netto-Profit (mit Retouren)</div><div class="value green" id="c-profit-mit">–</div>
         <div class="profit-bar"><div class="profit-bar-fill" id="profit-bar" style="width:0%"></div></div>
         <div class="sub" id="c-margin">Marge: – | ROAS: –</div>
       </div>
+      <div class="card"><div class="label">Netto-Profit (ohne Retouren)</div><div class="value green" id="c-profit-ohne">–</div><div class="sub">vor Rückerstattungen</div></div>
     </div>
     <div class="panel">
       <h3>🌍 Aufschlüsselung nach Land</h3>
@@ -158,6 +162,14 @@
     <div class="pnl-grid">
       <div class="panel"><h3>Gewinn & Verlust</h3><div id="pnl-table"><div class="empty-state">Zeitraum auswählen</div></div></div>
       <div class="panel"><h3>📣 Werbekosten</h3><div id="ads-breakdown"><div class="empty-state">Keine Daten</div></div></div>
+    </div>
+    <div class="panel">
+      <h3>↩️ Retouren / Rückerstattungen</h3>
+      <p style="font-size:0.78rem;color:#666;margin-bottom:14px;margin-top:-8px;">
+        Rückerstattungen werden dem Tag zugeordnet, an dem du sie in Shopify <strong style="color:#ccc;">bearbeitet</strong> hast – nicht dem Bestelldatum.
+        <strong style="color:#ccc;">Netto-Verlust</strong> = erstatteter Betrag abzüglich zurückgeholter USt. (Produktkosten gelten beim Dropshipping als bereits gezahlt, Payment-Gebühren werden vom Anbieter i.d.R. einbehalten.)
+      </p>
+      <div id="refunds-table"><div class="empty-state">Keine Daten geladen</div></div>
     </div>
     <div class="panel"><h3>Bestellungen</h3><div id="orders-table"><div class="empty-state">Keine Daten geladen</div></div></div>
   </div>
@@ -347,6 +359,16 @@ const LAND_LABEL = { DE:'🇩🇪 DE', AT:'🇦🇹 AT', CH:'🇨🇭 CH', OTHER
 
 function fmt(d) { return d.toISOString().split('T')[0]; }
 
+// Lokales Datum (Browser-Zeitzone) aus ISO-String -> "YYYY-MM-DD"
+// Wichtig für Refunds: Shopify liefert created_at in UTC, wir wollen den lokalen Bearbeitungstag.
+function localDateStr(iso) {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Dynamischer Timezone-Offset (CEST/CET automatisch)
 function getTZOffset() {
   const offset = -new Date().getTimezoneOffset();
@@ -363,6 +385,22 @@ function getUstRate(country) {
   if (country === 'AT') return (parseFloat(config['cfg-ust-at']) || 20) / 100;
   if (country === 'CH') return 0;
   return (parseFloat(config['cfg-ust-de']) || 19) / 100;
+}
+
+// Erstatteten Brutto-Betrag aus einem Shopify-Refund ermitteln.
+// Primär: tatsächliche Rückerstattungs-Transaktionen. Fallback: refund_line_items + Steuer.
+function extractRefundGross(refund) {
+  let gross = (refund.transactions || [])
+    .filter(t => t.kind === 'refund' && (t.status === 'success' || !t.status))
+    .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+  if (gross === 0 && (refund.refund_line_items || []).length) {
+    gross = (refund.refund_line_items || []).reduce((s, rli) => {
+      const sub = parseFloat(rli.subtotal_set?.shop_money?.amount ?? rli.subtotal ?? 0) || 0;
+      const tax = parseFloat(rli.total_tax_set?.shop_money?.amount ?? rli.total_tax ?? 0) || 0;
+      return s + sub + tax;
+    }, 0);
+  }
+  return gross;
 }
 
 function groupByProduct(items) {
@@ -510,7 +548,7 @@ async function loadDashboard() {
     const tiktokSpend = tiktokApi.spend > 0 ? tiktokApi.spend : getAdCostsForRange('tiktok', from, to);
     renderDashboard(shopifyData, tiktokSpend, metaSpend);
   } catch(e) { alert('Fehler: ' + e.message); console.error(e); }
-  finally { spinner.style.display = 'none'; }
+  finally { spinner.style.display = 'none'; const ls = document.getElementById('load-status'); if (ls) ls.textContent = ''; }
 }
 
 function saveAdCost(platform) {
@@ -551,23 +589,87 @@ function getAdCostsForRange(platform, from, to) {
   }, 0);
 }
 
-async function fetchShopifyOrders(from, to) {
-  const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
-  if (!domain || !token) return { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {} };
-  const tz = getTZOffset();
+const PAGE_LIMIT = 250; // Shopify max. Bestellungen pro Seite
+let _fetchProgress = { pages: 0, orders: 0 };
+
+function updateLoadStatus() {
+  const el = document.getElementById('load-status');
+  if (el) el.textContent = _fetchProgress.pages
+    ? `⏳ Lade… (${_fetchProgress.pages} Abfrage${_fetchProgress.pages===1?'':'n'} · ${_fetchProgress.orders} Bestellungen)`
+    : '';
+}
+
+// Eine einzelne Shopify-Seite (max. 250) für ein Datums-Fenster laden.
+async function shopifyFetchPage(domain, token, dateField, minISO, maxISO) {
   const params = new URLSearchParams({
     shop: domain, token, path: 'orders.json', status: 'any',
-    created_at_min: from+'T00:00:00'+tz,
-    created_at_max: to+'T23:59:59'+tz,
-    limit: '250', financial_status: 'any'
+    [dateField + '_min']: minISO,
+    [dateField + '_max']: maxISO,
+    limit: String(PAGE_LIMIT), financial_status: 'any'
   });
   const resp = await fetch(`${PROXY}?${params}`);
   if (!resp.ok) throw new Error('Shopify Fehler: ' + resp.status);
   const data = await resp.json();
+  return data.orders || [];
+}
+
+// Lädt ALLE Bestellungen in einem Datums-Fenster – ohne 250er-Limit.
+// Strategie: Fenster laden; kommen genau 250 zurück (= evtl. abgeschnitten),
+// wird das Zeitfenster halbiert und beide Hälften werden rekursiv geladen.
+// Sequentiell, um Shopify-Rate-Limits zu schonen. Duplikate werden per ID entfernt.
+async function fetchAllOrders(domain, token, dateField, startMs, endMs, depth) {
+  depth = depth || 0;
+  const minISO = new Date(startMs).toISOString();
+  const maxISO = new Date(endMs).toISOString();
+  const page = await shopifyFetchPage(domain, token, dateField, minISO, maxISO);
+  _fetchProgress.pages++; _fetchProgress.orders += page.length; updateLoadStatus();
+  if (page.length < PAGE_LIMIT) return page;
+  // Limit erreicht -> Fenster evtl. abgeschnitten -> halbieren
+  if (endMs - startMs <= 1000 || depth > 30) {
+    console.warn('Pagination: Fenster zu klein zum Aufteilen (>250 Bestellungen in <1s?)', minISO);
+    return page;
+  }
+  const midMs = Math.floor((startMs + endMs) / 2);
+  const first = await fetchAllOrders(domain, token, dateField, startMs, midMs, depth + 1);
+  const second = await fetchAllOrders(domain, token, dateField, midMs + 1, endMs, depth + 1);
+  return first.concat(second);
+}
+
+async function fetchShopifyOrders(from, to) {
+  const empty = { orders: [], revenue: 0, cogs: 0, fees: 0, ust: 0, byCountry: {}, refunds: [], refundGross: 0, refundUst: 0, refundNet: 0 };
+  const domain = config['cfg-shopify-domain'], token = config['cfg-shopify-token'];
+  if (!domain || !token) return empty;
+  const tz = getTZOffset();
+
+  _fetchProgress = { pages: 0, orders: 0 }; updateLoadStatus();
+
+  const startMs = Date.parse(from + 'T00:00:00' + tz);
+  const endMs   = Date.parse(to   + 'T23:59:59' + tz);
+
+  // Query 1: Bestellungen ERSTELLT im Zeitraum (Basis für Umsatz/COGS) – vollständig paginiert.
+  // Query 2: Bestellungen AKTUALISIERT im Zeitraum (für Refunds) – vollständig paginiert,
+  //          fängt auch Rückerstattungen auf älteren Bestellungen ein.
+  const [createdRaw, updatedRaw] = await Promise.all([
+    fetchAllOrders(domain, token, 'created_at', startMs, endMs, 0),
+    fetchAllOrders(domain, token, 'updated_at', startMs, endMs, 0).catch(e => { console.warn('updated_at Fetch fehlgeschlagen:', e); return []; })
+  ]);
+
+  // Duplikate (durch Fenster-Überlappung an den Grenzen) per Order-ID entfernen
+  const createdMap = new Map();
+  createdRaw.forEach(o => createdMap.set(o.id, o));
+  const createdOrders = [...createdMap.values()];
+
+  const updatedMap = new Map();
+  updatedRaw.forEach(o => updatedMap.set(o.id, o));
+  const updatedOrders = [...updatedMap.values()];
+
+  // === Umsatz / COGS / Fees / USt aus den ERSTELLTEN Bestellungen ===
+  // 'refunded' & 'partially_refunded' bewusst eingeschlossen:
+  // Der Original-Umsatz zählt für "ohne Retouren", die Erstattung wird separat abgezogen.
   let revenue = 0, cogs = 0, fees = 0, ust = 0;
   const byCountry = {};
-  const INCLUDE_STATUSES = ['paid','pending','partially_paid','authorized'];
-  const orders = (data.orders || []).filter(order => {
+  const INCLUDE_STATUSES = ['paid','pending','partially_paid','authorized','refunded','partially_refunded'];
+  const orders = createdOrders.filter(order => {
     const fs = order.financial_status || '';
     return INCLUDE_STATUSES.includes(fs);
   }).map(order => {
@@ -599,12 +701,39 @@ async function fetchShopifyOrders(from, to) {
     }
 
     revenue += total; cogs += orderCogs; fees += orderFees; ust += orderUst;
-    if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0 };
+    if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0, refundGross:0, refundNet:0 };
     byCountry[country].revenue += total; byCountry[country].cogs += orderCogs;
     byCountry[country].fees += orderFees; byCountry[country].ust += orderUst; byCountry[country].orders++;
     return { id: order.name, date: order.created_at.split('T')[0], total, country, cogs: orderCogs, ust: orderUst, fees: orderFees, financial_status: order.financial_status || 'paid' };
   });
-  return { orders, revenue, cogs, fees, ust, byCountry };
+
+  // === Retouren: aus ALLEN bekannten Bestellungen (created + updated), dedupliziert ===
+  const allOrdersById = new Map();
+  [...createdOrders, ...updatedOrders].forEach(o => allOrdersById.set(o.id, o));
+
+  const refunds = [];
+  let refundGross = 0, refundUst = 0, refundNet = 0;
+  allOrdersById.forEach(order => {
+    const country = order.shipping_address?.country_code || 'DE';
+    const ustRate = getUstRate(country);
+    (order.refunds || []).forEach(refund => {
+      const rDate = localDateStr(refund.created_at);
+      // Nur Refunds zählen, die im ausgewählten Zeitraum BEARBEITET wurden
+      if (rDate < from || rDate > to) return;
+      const gross = extractRefundGross(refund);
+      if (gross <= 0) return;
+      const ustPortion = gross * (ustRate / (1 + ustRate));
+      const net = gross - ustPortion;
+      refunds.push({ orderId: order.name, date: rDate, country, gross, ust: ustPortion, net, note: refund.note || '' });
+      refundGross += gross; refundUst += ustPortion; refundNet += net;
+      if (!byCountry[country]) byCountry[country] = { revenue:0, cogs:0, fees:0, ust:0, orders:0, refundGross:0, refundNet:0 };
+      byCountry[country].refundGross += gross;
+      byCountry[country].refundNet += net;
+    });
+  });
+  refunds.sort((a,b) => b.date.localeCompare(a.date));
+
+  return { orders, revenue, cogs, fees, ust, byCountry, refunds, refundGross, refundUst, refundNet };
 }
 
 async function fetchTikTokAdSpend(from, to) {
@@ -633,10 +762,12 @@ async function fetchMetaAdSpend(from, to) {
 
 function renderDashboard(shopify, tiktokSpend, metaSpend) {
   const totalAds = tiktokSpend + metaSpend;
-  const netProfit = shopify.revenue - shopify.cogs - totalAds - shopify.fees - shopify.ust;
-  const margin = shopify.revenue > 0 ? (netProfit / shopify.revenue * 100) : 0;
+  const profitOhne = shopify.revenue - shopify.cogs - totalAds - shopify.fees - shopify.ust;
+  const profitMit = profitOhne - shopify.refundNet;
+  const marginMit = shopify.revenue > 0 ? (profitMit / shopify.revenue * 100) : 0;
   const roas = totalAds > 0 ? (shopify.revenue / totalAds) : 0;
   const f = v => v.toFixed(2) + ' €';
+
   document.getElementById('c-revenue').textContent = f(shopify.revenue);
   document.getElementById('c-orders-count').textContent = shopify.orders.length + ' Bestellungen';
   document.getElementById('c-cogs').textContent = '– ' + f(shopify.cogs);
@@ -647,10 +778,22 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
   document.getElementById('c-ust').textContent = f(shopify.ust);
   const sub = document.getElementById('ust-rates-sub');
   if (sub) sub.textContent = `DE ${config['cfg-ust-de']||19}% | AT ${config['cfg-ust-at']||20}% | CH 0%`;
-  const pe = document.getElementById('c-profit');
-  pe.textContent = f(netProfit); pe.className = 'value ' + (netProfit >= 0 ? 'green' : 'red');
-  document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, margin)) + '%';
-  document.getElementById('c-margin').textContent = 'Marge: ' + margin.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
+
+  // Retouren-Karte
+  document.getElementById('c-refunds').textContent = shopify.refundGross > 0 ? '– ' + f(shopify.refundGross) : f(0);
+  document.getElementById('c-refunds-sub').textContent =
+    shopify.refunds.length + ' Rückerstattung' + (shopify.refunds.length === 1 ? '' : 'en') + ' · Netto-Impact: – ' + f(shopify.refundNet);
+
+  // Netto-Profit MIT Retouren (headline)
+  const peMit = document.getElementById('c-profit-mit');
+  peMit.textContent = f(profitMit); peMit.className = 'value ' + (profitMit >= 0 ? 'green' : 'red');
+  document.getElementById('profit-bar').style.width = Math.max(0, Math.min(100, marginMit)) + '%';
+  document.getElementById('c-margin').textContent = 'Marge: ' + marginMit.toFixed(1) + '% | ROAS: ' + roas.toFixed(2) + 'x';
+
+  // Netto-Profit OHNE Retouren
+  const peOhne = document.getElementById('c-profit-ohne');
+  peOhne.textContent = f(profitOhne); peOhne.className = 'value ' + (profitOhne >= 0 ? 'green' : 'red');
+
   const ci = { DE:{flag:'🇩🇪',name:'Deutschland'}, AT:{flag:'🇦🇹',name:'Österreich'}, CH:{flag:'🇨🇭',name:'Schweiz'} };
   const cbEl = document.getElementById('country-breakdown');
   const countries = Object.entries(shopify.byCountry).sort((a,b) => b[1].revenue-a[1].revenue);
@@ -658,6 +801,8 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     countries.map(([code,d]) => {
       const info = ci[code] || {flag:'🌍',name:code};
       const profit = d.revenue - d.cogs - d.fees - d.ust;
+      const refundNet = d.refundNet || 0;
+      const profitMitC = profit - refundNet;
       const ustPct = code==='AT'?(config['cfg-ust-at']||20):code==='CH'?0:(config['cfg-ust-de']||19);
       const feeRate = code==='CH'?'4.2%':'2.7%';
       return `<div class="country-card">
@@ -667,10 +812,13 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
         <div class="row"><span>Payments (${feeRate} + 0,30€)</span><span style="color:#e17055">– ${f(d.fees)}</span></div>
         <div class="row"><span>USt (${ustPct}%)</span><span style="color:#fdcb6e">${d.ust > 0 ? '– '+f(d.ust) : '0,00 €'}</span></div>
         <div class="row" style="border-top:1px solid #2a2a3a;margin-top:6px;padding-top:6px;font-weight:700">
-          <span>Profit (ohne Ads)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span>
+          <span>Profit (ohne Ads, ohne Ret.)</span><span style="color:${profit>=0?'#00b894':'#e17055'}">${f(profit)}</span>
         </div>
+        ${refundNet > 0 ? `<div class="row"><span>↩️ Retouren (netto)</span><span style="color:#e17055">– ${f(refundNet)}</span></div>
+        <div class="row" style="font-weight:700"><span>Profit (mit Retouren)</span><span style="color:${profitMitC>=0?'#00b894':'#e17055'}">${f(profitMitC)}</span></div>` : ''}
       </div>`;
     }).join('');
+
   document.getElementById('pnl-table').innerHTML = `
     <div class="summary-row"><span>Brutto-Umsatz</span><span>${f(shopify.revenue)}</span></div>
     <div class="summary-row"><span style="color:#e17055">– Produktkosten</span><span style="color:#e17055">– ${f(shopify.cogs)}</span></div>
@@ -679,8 +827,13 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     <div class="summary-row"><span style="color:#e17055">– Shopify Payments</span><span style="color:#e17055">– ${f(shopify.fees)}</span></div>
     <div class="summary-row"><span style="color:#fdcb6e">– Umsatzsteuer</span><span style="color:#fdcb6e">– ${f(shopify.ust)}</span></div>
     <div class="summary-row" style="margin-top:8px;padding-top:12px;border-top:2px solid #2a2a3a;font-weight:700;font-size:0.95rem">
-      <span>= Netto-Profit</span><span style="color:${netProfit>=0?'#00b894':'#e17055'}">${f(netProfit)}</span>
+      <span>= Netto-Profit (ohne Retouren)</span><span style="color:${profitOhne>=0?'#00b894':'#e17055'}">${f(profitOhne)}</span>
+    </div>
+    <div class="summary-row"><span style="color:#e17055">– Retouren (netto)</span><span style="color:#e17055">– ${f(shopify.refundNet)}</span></div>
+    <div class="summary-row" style="margin-top:4px;padding-top:10px;border-top:2px solid #2a2a3a;font-weight:700;font-size:0.95rem">
+      <span>= Netto-Profit (mit Retouren)</span><span style="color:${profitMit>=0?'#00b894':'#e17055'}">${f(profitMit)}</span>
     </div>`;
+
   const adPct = shopify.revenue > 0 ? (totalAds/shopify.revenue*100) : 0;
   const cpo = shopify.orders.length > 0 ? totalAds/shopify.orders.length : 0;
   document.getElementById('ads-breakdown').innerHTML = `
@@ -692,13 +845,44 @@ function renderDashboard(shopify, tiktokSpend, metaSpend) {
     <div class="summary-row"><span>Anteil am Umsatz</span><span style="color:#fdcb6e">${adPct.toFixed(1)}%</span></div>
     <div class="summary-row"><span>ROAS</span><span style="color:#00b894;font-size:1.05rem">${roas.toFixed(2)}x</span></div>
     <div class="summary-row"><span>Kosten pro Bestellung</span><span>${cpo > 0 ? f(cpo) : '–'}</span></div>`;
-  if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
+
+  // === Retouren-Tabelle (immer rendern, auch ohne neue Bestellungen im Zeitraum) ===
+  const rt = document.getElementById('refunds-table');
   const bc = { DE:'badge-de', AT:'badge-at', CH:'badge-ch' };
   const fl2 = { DE:'🇩🇪', AT:'🇦🇹', CH:'🇨🇭' };
+  if (!shopify.refunds.length) {
+    rt.innerHTML = '<div class="empty-state">Keine Rückerstattungen im Zeitraum 🎉</div>';
+  } else {
+    rt.innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Datum (bearbeitet)</th><th>Bestellung</th><th>Land</th><th>Erstattet (brutto)</th><th>USt zurück</th><th>Netto-Verlust</th><th>Notiz</th></tr></thead><tbody>' +
+      shopify.refunds.map(r => `<tr>
+        <td style="color:#888">${r.date}</td>
+        <td><strong>${r.orderId}</strong></td>
+        <td><span class="badge ${bc[r.country]||'badge-other'}">${fl2[r.country]||'🌍'} ${r.country}</span></td>
+        <td style="color:#e17055">– ${f(r.gross)}</td>
+        <td style="color:#fdcb6e">${r.ust > 0 ? '+ '+f(r.ust) : '0,00 €'}</td>
+        <td style="color:#e17055;font-weight:700">– ${f(r.net)}</td>
+        <td style="color:#888">${r.note || '–'}</td>
+      </tr>`).join('') +
+      `</tbody><tfoot><tr>
+        <td colspan="3" style="padding:10px 12px;font-size:0.8rem;color:#888">Gesamt (${shopify.refunds.length})</td>
+        <td style="padding:10px 12px;font-weight:700;color:#e17055">– ${f(shopify.refundGross)}</td>
+        <td style="padding:10px 12px;color:#fdcb6e">+ ${f(shopify.refundUst)}</td>
+        <td style="padding:10px 12px;font-weight:700;color:#e17055">– ${f(shopify.refundNet)}</td>
+        <td></td>
+      </tr></tfoot></table></div>`;
+  }
+
+  if (!shopify.orders.length) { document.getElementById('orders-table').innerHTML = '<div class="empty-state">Keine Bestellungen</div>'; return; }
   document.getElementById('orders-table').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Bestellung</th><th>Datum</th><th>Land</th><th>Umsatz</th><th>Produktkosten</th><th>Payments</th><th>USt</th><th>Profit (ohne Ads)</th></tr></thead><tbody>' +
     shopify.orders.map(o => {
       const p = o.total - o.cogs - o.fees - o.ust;
-      return `<tr><td><strong>${o.id}</strong>${o.financial_status && o.financial_status !== 'paid' ? '<br><span style="font-size:0.65rem;padding:1px 6px;border-radius:10px;background:#fdcb6e22;color:#fdcb6e;font-weight:700;">' + (o.financial_status === 'pending' ? '⏳ Offen' : o.financial_status === 'partially_paid' ? '⚠️ Teilbezahlt' : o.financial_status === 'authorized' ? '🔒 Autorisiert' : o.financial_status) + '</span>' : ''}</td><td style="color:#888">${o.date}</td>
+      const statusLabel = o.financial_status === 'pending' ? '⏳ Offen'
+        : o.financial_status === 'partially_paid' ? '⚠️ Teilbezahlt'
+        : o.financial_status === 'authorized' ? '🔒 Autorisiert'
+        : o.financial_status === 'refunded' ? '↩️ Erstattet'
+        : o.financial_status === 'partially_refunded' ? '↩️ Teilw. erstattet'
+        : o.financial_status;
+      return `<tr><td><strong>${o.id}</strong>${o.financial_status && o.financial_status !== 'paid' ? '<br><span style="font-size:0.65rem;padding:1px 6px;border-radius:10px;background:#fdcb6e22;color:#fdcb6e;font-weight:700;">' + statusLabel + '</span>' : ''}</td><td style="color:#888">${o.date}</td>
         <td><span class="badge ${bc[o.country]||'badge-other'}">${fl2[o.country]||'🌍'} ${o.country}</span></td>
         <td>${f(o.total)}</td><td style="color:#e17055">– ${f(o.cogs)}</td>
         <td style="color:#e17055">– ${f(o.fees)}</td><td style="color:#fdcb6e">${o.ust > 0 ? '– '+f(o.ust) : '0,00 €'}</td>
